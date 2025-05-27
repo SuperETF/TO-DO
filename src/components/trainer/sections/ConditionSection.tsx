@@ -6,6 +6,7 @@ type ConditionInsert = Database["public"]["Tables"]["conditions"]["Insert"];
 
 interface ConditionSectionProps {
   memberId: string;
+  onSaved?: () => void; // ✅ 추가
 }
 
 export default function ConditionSection({ memberId }: ConditionSectionProps) {

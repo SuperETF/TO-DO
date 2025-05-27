@@ -3,6 +3,7 @@ import { supabase } from "../../../lib/supabaseClient";
 
 interface Props {
   memberId: string;
+  trainerName: string;
 }
 
 export default function TrainerRecommendationInputSection({ memberId }: Props) {

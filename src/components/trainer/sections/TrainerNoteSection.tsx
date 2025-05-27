@@ -6,6 +6,7 @@ type NoteInsert = Database["public"]["Tables"]["trainer_notes"]["Insert"];
 
 interface TrainerNoteSectionProps {
   memberId: string;
+  onSaved?: () => void;
 }
 
 export default function TrainerNoteSection({ memberId }: TrainerNoteSectionProps) {

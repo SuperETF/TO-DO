@@ -7,6 +7,7 @@ type WorkoutRow = Database["public"]["Tables"]["workouts"]["Row"];
 
 interface WorkoutSectionProps {
   memberId: string;
+  onSaved?: () => void;
 }
 
 export default function WorkoutSection({ memberId }: WorkoutSectionProps) {
