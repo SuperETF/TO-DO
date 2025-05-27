@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
-import { useAchievement } from "../../../hooks/useAchievement";
 
 interface WeeklyExerciseSectionProps {
   memberId: string;
@@ -11,6 +10,7 @@ interface WeeklyExerciseSectionProps {
 export default function WeeklyExerciseSection({
   memberId,
   registrationDate,
+  refetch,
 }: WeeklyExerciseSectionProps) {
   const [activeTab, setActiveTab] = useState<"weekly" | "trainer">("weekly");
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
@@ -18,7 +18,6 @@ export default function WeeklyExerciseSection({
   const [trainerName, setTrainerName] = useState<string>("");
   const [isCompleted, setIsCompleted] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { refetch } = useAchievement(memberId);
 
   const currentWeek = getCurrentWeekSince(registrationDate);
 
@@ -53,7 +52,7 @@ export default function WeeklyExerciseSection({
         .select("video_url, title, trainer")
         .eq("member_id", memberId)
         .eq("week", currentWeek)
-        .single();
+        .maybeSingle();
 
       if (assigned?.video_url) {
         setVideoUrl(assigned.video_url);
@@ -66,7 +65,7 @@ export default function WeeklyExerciseSection({
         .from("recommended_workouts")
         .select("video_url, title")
         .eq("week", currentWeek)
-        .single();
+        .maybeSingle();
 
       if (recommended?.video_url) {
         setVideoUrl(recommended.video_url);
@@ -80,7 +79,7 @@ export default function WeeklyExerciseSection({
         .from("trainer_recommendations")
         .select("video_url, title, trainer")
         .eq("member_id", memberId)
-        .single();
+        .maybeSingle();
 
       if (data?.video_url) {
         setVideoUrl(data.video_url);
@@ -126,7 +125,7 @@ export default function WeeklyExerciseSection({
 
     if (!logError) {
       setIsCompleted(true);
-      await refetch();
+      if (refetch) await refetch(); // ✅ 보호된 호출
     } else {
       console.error("운동 저장 실패:", logError.message);
     }
