@@ -48,7 +48,7 @@ export default function TrainerRecommendationInputSection({ memberId }: Props) {
           },
         ],
         {
-          onConflict: "member_id", // ✅ string 하나로 처리
+          onConflict: "member_id,date", // ✅ string 하나로 처리
         }
       );
 

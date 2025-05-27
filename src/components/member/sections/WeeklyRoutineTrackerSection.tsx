@@ -5,6 +5,7 @@ import { useAchievement } from "../../../hooks/useAchievement";
 
 interface Props {
   memberId: string;
+  refetch?: () => Promise<void>;
 }
 
 interface RoutineLog {

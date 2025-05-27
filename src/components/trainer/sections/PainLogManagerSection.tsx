@@ -1,5 +1,3 @@
-// ✅ src/components/trainer/sections/PainLogManagerSection.tsx
-
 import { useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 
@@ -45,36 +43,31 @@ export default function PainLogManagerSection({ memberId }: Props) {
   const handleSave = async () => {
     const trimmedArea = area.trim();
     if (!trimmedArea) {
-      setToast("❌ 통증 부위를 입력해주세요");
-      setToastType("error");
-      setTimeout(() => setToast(""), 2500);
+      showToast("❌ 통증 부위를 입력해주세요", "error");
       return;
     }
 
-    const { error } = await supabase.from("pain_logs").upsert(
-      {
-        member_id: memberId,
-        date,
-        pain_score: score,
-        pain_area: trimmedArea,
-      },
-      {
-        onConflict: ["member_id", "date", "pain_area"],
-      }
-    );
+    const payload = {
+      member_id: memberId,
+      date,
+      pain_score: score,
+      pain_area: trimmedArea,
+    };
+
+    const { error } = await supabase
+      .from("pain_logs")
+      .upsert([payload], {
+        onConflict: "member_id,date,pain_area", // ✅ 문자열로
+      });
 
     if (error) {
       console.error("❌ 저장 실패:", error);
-      setToast(`❌ 저장 실패: ${error.message}`);
-      setToastType("error");
+      showToast(`❌ 저장 실패: ${error.message}`, "error");
     } else {
-      setToast(editKey ? "✅ 수정 완료" : "✅ 통증 기록 저장 완료");
-      setToastType("success");
+      showToast(editKey ? "✅ 수정 완료" : "✅ 통증 기록 저장 완료", "success");
       setEditKey(null);
       await fetchLogs();
     }
-
-    setTimeout(() => setToast(""), 2500);
   };
 
   const handleDelete = async (targetDate: string, targetArea?: string) => {
@@ -86,14 +79,16 @@ export default function PainLogManagerSection({ memberId }: Props) {
       .eq("pain_area", targetArea);
 
     if (error) {
-      setToast("❌ 삭제 실패");
-      setToastType("error");
+      showToast("❌ 삭제 실패", "error");
     } else {
-      setToast("🗑️ 삭제 완료");
-      setToastType("success");
+      showToast("🗑️ 삭제 완료", "success");
       await fetchLogs();
     }
+  };
 
+  const showToast = (message: string, type: "success" | "error") => {
+    setToast(message);
+    setToastType(type);
     setTimeout(() => setToast(""), 2500);
   };
 

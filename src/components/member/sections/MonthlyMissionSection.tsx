@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
-import { useAchievement } from "../../../hooks/useAchievement";
 
 interface Props {
   memberId: string;
+  refetch?: () => Promise<void>; // ✅ props 타입 정의
 }
 
 interface MissionLog {
@@ -12,11 +12,10 @@ interface MissionLog {
   title: string;
 }
 
-export default function MonthlyMissionSection({ memberId }: Props) {
+export default function MonthlyMissionSection({ memberId, refetch }: Props) {
   const [missions, setMissions] = useState<MissionLog[]>([]);
   const [visible, setVisible] = useState<MissionLog[]>([]);
   const [loading, setLoading] = useState(true);
-  const { refetch } = useAchievement(memberId); // ✅ 성취 훅에서 refetch 사용
 
   const fetchMissions = async () => {
     const now = new Date();
@@ -29,10 +28,10 @@ export default function MonthlyMissionSection({ memberId }: Props) {
       .eq("assigned_month", currentMonth);
 
     if (!error && logs) {
-      const formatted = logs.map((l) => ({
+      const formatted: MissionLog[] = logs.map((l: any) => ({
         mission_id: l.mission_id,
         is_completed: l.is_completed,
-        title: l.monthly_missions?.title || "",
+        title: l.monthly_missions?.title ?? "", // ✅ 안전 처리
       }));
 
       setMissions(formatted);
@@ -63,7 +62,7 @@ export default function MonthlyMissionSection({ memberId }: Props) {
       );
       setMissions(updated);
       setVisible(updated.filter((m) => !m.is_completed).slice(0, 3));
-      await refetch(); // ✅ 성취 상태 반영 (LevelBadge 자동 업데이트됨)
+      if (refetch) await refetch(); // ✅ 상위에서 받은 refetch 사용
     }
   };
 

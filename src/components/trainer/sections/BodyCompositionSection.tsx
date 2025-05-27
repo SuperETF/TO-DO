@@ -1,21 +1,19 @@
-// ✅ src/components/trainer/sections/BodyCompositionSection.tsx
-
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 import type { Database } from "../../../types/supabase";
 import * as echarts from "echarts";
 
 type BodyInsert = Database["public"]["Tables"]["body_compositions"]["Insert"];
-
 type BodyRow = Database["public"]["Tables"]["body_compositions"]["Row"];
 
 interface Props {
   memberId: string;
+  onSaved?: () => void;
 }
 
 export default function BodyCompositionSection({ memberId }: Props) {
   const [compositions, setCompositions] = useState<BodyRow[]>([]);
-  const [editId, setEditId] = useState<number | null>(null);
+  const [editId, setEditId] = useState<string | null>(null); // ✅ string
   const [formOpen, setFormOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState("");
@@ -84,7 +82,9 @@ export default function BodyCompositionSection({ memberId }: Props) {
 
     const { error } = await supabase
       .from("body_compositions")
-      .upsert(editId ? { ...payload, id: editId } : payload);
+      .upsert([
+        editId ? { ...payload, id: editId } : payload
+      ]); // ✅ 배열로 감싸고 id 추가
 
     if (error) {
       setToast("❌ 저장 실패: " + error.message);
@@ -105,16 +105,16 @@ export default function BodyCompositionSection({ memberId }: Props) {
   const handleEdit = (c: BodyRow) => {
     setForm({
       date: c.date,
-      weight: c.weight.toString(),
-      bodyFat: c.body_fat_percent?.toString() || "",
-      muscle: c.muscle_mass?.toString() || "",
-      bmi: c.bmi?.toString() || "",
+      weight: c.weight?.toString() ?? "",
+      bodyFat: c.body_fat_percent?.toString() ?? "",
+      muscle: c.muscle_mass?.toString() ?? "",
+      bmi: c.bmi?.toString() ?? "",
     });
     setEditId(c.id);
     setFormOpen(true);
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     await supabase.from("body_compositions").delete().eq("id", id);
     fetchData();
   };
