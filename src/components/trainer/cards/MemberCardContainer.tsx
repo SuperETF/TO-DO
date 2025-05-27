@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import ConditionSection from "../../../components/trainer/sections/ConditionSection";
 import WorkoutSection from "../../../components/trainer/sections/WorkoutSection";
 import TrainerNoteSection from "../../../components/trainer/sections/TrainerNoteSection";
@@ -23,6 +23,7 @@ interface Props {
 export default function MemberCardContainer({ member }: Props) {
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [toast, setToast] = useState("");
+  const toastTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const toggleSection = (section: string) => {
     setActiveSection((prev) => (prev === section ? null : section));
@@ -30,7 +31,8 @@ export default function MemberCardContainer({ member }: Props) {
 
   const handleSave = (message: string) => {
     setToast(message);
-    setTimeout(() => setToast(""), 2500);
+    if (toastTimeout.current) clearTimeout(toastTimeout.current);
+    toastTimeout.current = setTimeout(() => setToast(""), 2500);
   };
 
   return (
@@ -47,7 +49,6 @@ export default function MemberCardContainer({ member }: Props) {
           </p>
         )}
       </div>
-      {/* 아코디언 섹션들 */}
       <div className="space-y-4 p-4">
         <AccordionItem
           title="오늘의 컨디션"
@@ -56,7 +57,6 @@ export default function MemberCardContainer({ member }: Props) {
         >
           <ConditionSection memberId={member.id} onSaved={() => handleSave("컨디션 저장 완료")} />
         </AccordionItem>
-
         <AccordionItem
           title="운동 기록"
           isOpen={activeSection === "workout"}
@@ -64,7 +64,6 @@ export default function MemberCardContainer({ member }: Props) {
         >
           <WorkoutSection memberId={member.id} onSaved={() => handleSave("운동 기록 저장 완료")} />
         </AccordionItem>
-
         <AccordionItem
           title="체성분 분석"
           isOpen={activeSection === "body"}
@@ -72,7 +71,6 @@ export default function MemberCardContainer({ member }: Props) {
         >
           <BodyCompositionSection memberId={member.id} />
         </AccordionItem>
-
         <AccordionItem
           title="피드백"
           isOpen={activeSection === "feedback"}
@@ -80,7 +78,6 @@ export default function MemberCardContainer({ member }: Props) {
         >
           <FeedbackSection memberId={member.id} />
         </AccordionItem>
-
         <AccordionItem
           title="예약 일정"
           isOpen={activeSection === "appointment"}
@@ -88,7 +85,6 @@ export default function MemberCardContainer({ member }: Props) {
         >
           <AppointmentSection memberId={member.id} />
         </AccordionItem>
-
         <AccordionItem
           title="이달의 미션"
           isOpen={activeSection === "mission"}
@@ -96,7 +92,6 @@ export default function MemberCardContainer({ member }: Props) {
         >
           <MissionSection memberId={member.id} />
         </AccordionItem>
-
         <AccordionItem
           title="트레이너 메모"
           isOpen={activeSection === "note"}
@@ -104,7 +99,6 @@ export default function MemberCardContainer({ member }: Props) {
         >
           <TrainerNoteSection memberId={member.id} onSaved={() => handleSave("메모 저장 완료")} />
         </AccordionItem>
-
         <AccordionItem
           title="통증 점수 입력 (날짜별)"
           isOpen={activeSection === "pain"}
@@ -112,7 +106,6 @@ export default function MemberCardContainer({ member }: Props) {
         >
           <PainLogManagerSection memberId={member.id} />
         </AccordionItem>
-
         <AccordionItem
           title="추천 운동 입력"
           isOpen={activeSection === "recommend"}
@@ -120,11 +113,10 @@ export default function MemberCardContainer({ member }: Props) {
         >
           <TrainerRecommendationInputSection
             memberId={member.id}
-            trainerName="이호진"
+            trainerName="이호진" 
           />
         </AccordionItem>
       </div>
-
       {/* 토스트 메시지 */}
       {toast && (
         <div className="px-4 pb-4">
@@ -136,6 +128,7 @@ export default function MemberCardContainer({ member }: Props) {
     </div>
   );
 }
+
 function AccordionItem({
   title,
   isOpen,

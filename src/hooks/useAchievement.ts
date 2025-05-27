@@ -39,19 +39,9 @@ export function useAchievement(memberId: string) {
     const m = missions?.length || 0;
     const w = workouts?.length || 0;
     const r = routines?.length || 0;
-
     const total = m + w + r;
     const newLevel = Math.floor(total / 5) + 1;
     const newPercent = (total % 5) * 20;
-
-    console.log("🎯 useAchievement fetchData:", {
-      missionCount: m,
-      workoutCount: w,
-      routineCount: r,
-      total,
-      level: newLevel,
-      percent: newPercent,
-    });
 
     setMissionCount(m);
     setWorkoutCount(w);
@@ -62,7 +52,8 @@ export function useAchievement(memberId: string) {
     await checkAndRewardLevel(newLevel);
   }, [memberId]);
 
-  const checkAndRewardLevel = async (newLevel: number) => {
+  // 레벨 10, 20, 30... 도달 시 월별 리워드 지급
+  const checkAndRewardLevel = useCallback(async (newLevel: number) => {
     if (!memberId || newLevel < 10 || newLevel % 10 !== 0) return;
 
     const rewardLevel = Math.floor(newLevel / 10) * 10;
@@ -77,7 +68,7 @@ export function useAchievement(memberId: string) {
       .eq("reward_level", rewardLevel)
       .eq("reward_month", currentMonth);
 
-    if (!error && (data?.length || 0) === 0) {
+    if (!error && (!data || data.length === 0)) {
       const { error: insertError } = await supabase
         .from("lesson_rewards")
         .insert([
@@ -87,23 +78,22 @@ export function useAchievement(memberId: string) {
             reward_month: currentMonth,
           },
         ]);
-
       if (!insertError) {
         alert(`🎉 레벨 ${rewardLevel} 도달! 레슨권 1매가 지급되었습니다!`);
-      } else {
-        console.error("❌ 레슨권 지급 실패:", insertError.message);
       }
     }
-  };
+  }, [memberId]);
 
+  // 최초 mount 및 memberId 변경 시 fetchData
   useEffect(() => {
     if (memberId) fetchData();
   }, [memberId, fetchData]);
 
+  // 실시간 변경 감지
   useEffect(() => {
     if (!memberId) return;
 
-    const tables = ["mission_logs", "workout_logs", "routine_logs"];
+    const tables = ["mission_logs", "workout_logs", "routine_logs"] as const;
     const channels: RealtimeChannel[] = [];
 
     for (const table of tables) {
@@ -117,14 +107,11 @@ export function useAchievement(memberId: string) {
             table,
             filter: `member_id=eq.${memberId}`,
           },
-          (payload) => {
-            console.log(`📡 Realtime [${table}] change detected:`, payload);
+          () => {
             fetchData();
           }
         )
-        .subscribe((status) => {
-          console.log(`🔌 Subscribed to [${table}]:`, status);
-        });
+        .subscribe();
 
       channels.push(channel);
     }

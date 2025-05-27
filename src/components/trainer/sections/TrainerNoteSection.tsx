@@ -4,19 +4,22 @@ import type { Database } from "../../../types/supabase";
 
 type NoteInsert = Database["public"]["Tables"]["trainer_notes"]["Insert"];
 
-interface TrainerNoteSectionProps {
+export interface TrainerNoteSectionProps {
   memberId: string;
   onSaved?: () => void;
 }
 
-export default function TrainerNoteSection({ memberId }: TrainerNoteSectionProps) {
+export default function TrainerNoteSection({ memberId, onSaved }: TrainerNoteSectionProps) {
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState("");
+  const [toastType, setToastType] = useState<"success" | "error">("success");
 
   const handleSave = async () => {
     if (!note.trim()) {
       setToast("메모 내용을 입력해주세요.");
+      setToastType("error");
+      setTimeout(() => setToast(""), 2000);
       return;
     }
 
@@ -31,13 +34,16 @@ export default function TrainerNoteSection({ memberId }: TrainerNoteSectionProps
 
     if (error) {
       setToast("❌ 저장 실패: " + error.message);
+      setToastType("error");
     } else {
       setToast("✅ 메모 저장 완료");
+      setToastType("success");
       setNote("");
+      if (onSaved) onSaved();
     }
 
     setLoading(false);
-    setTimeout(() => setToast(""), 3000);
+    setTimeout(() => setToast(""), 2500);
   };
 
   return (
@@ -53,12 +59,16 @@ export default function TrainerNoteSection({ memberId }: TrainerNoteSectionProps
       <button
         onClick={handleSave}
         disabled={loading}
-        className="w-full bg-indigo-600 text-white py-2 rounded-lg disabled:opacity-50"
+        className="w-full bg-indigo-600 text-white py-2 rounded-lg font-semibold disabled:opacity-50"
       >
         {loading ? "저장 중..." : "메모 저장"}
       </button>
       {toast && (
-        <p className="text-center text-sm text-green-600 transition-opacity duration-300">
+        <p
+          className={`text-center text-sm font-medium transition-opacity duration-300 ${
+            toastType === "success" ? "text-green-600" : "text-red-500"
+          }`}
+        >
           {toast}
         </p>
       )}

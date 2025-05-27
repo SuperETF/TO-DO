@@ -4,12 +4,12 @@ import type { Database } from "../../../types/supabase";
 
 type ConditionInsert = Database["public"]["Tables"]["conditions"]["Insert"];
 
-interface ConditionSectionProps {
+export interface ConditionSectionProps {
   memberId: string;
-  onSaved?: () => void; // ✅ 추가
+  onSaved?: () => void;
 }
 
-export default function ConditionSection({ memberId }: ConditionSectionProps) {
+export default function ConditionSection({ memberId, onSaved }: ConditionSectionProps) {
   const [sleep, setSleep] = useState(5);
   const [pain, setPain] = useState(3);
   const [energy, setEnergy] = useState(6);
@@ -59,6 +59,7 @@ export default function ConditionSection({ memberId }: ConditionSectionProps) {
     } else {
       setToast("✅ 오늘의 컨디션 저장 완료");
       setToastType("success");
+      if (onSaved) onSaved(); // 저장 성공 시 부모 콜백 호출
     }
 
     setLoading(false);
@@ -67,8 +68,6 @@ export default function ConditionSection({ memberId }: ConditionSectionProps) {
 
   return (
     <div className="space-y-5">
-
-
       <Slider label="수면" value={sleep} onChange={setSleep} />
       <Slider label="통증" value={pain} onChange={setPain} />
       <Slider label="에너지" value={energy} onChange={setEnergy} />

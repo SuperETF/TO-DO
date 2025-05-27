@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 import type { Database } from "../../../types/supabase";
 
 type WorkoutInsert = Database["public"]["Tables"]["workouts"]["Insert"];
 type WorkoutRow = Database["public"]["Tables"]["workouts"]["Row"];
 
-interface WorkoutSectionProps {
+export interface WorkoutSectionProps {
   memberId: string;
   onSaved?: () => void;
 }
@@ -16,27 +16,37 @@ export default function WorkoutSection({ memberId, onSaved }: WorkoutSectionProp
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState("");
   const [toastType, setToastType] = useState<"success" | "error">("success");
-  const [editId, setEditId] = useState<string | null>(null); // ✅ string으로 변경
+  const [editId, setEditId] = useState<string | null>(null);
   const [workouts, setWorkouts] = useState<WorkoutRow[]>([]);
+  const toastTimeout = useRef<NodeJS.Timeout | null>(null);
 
+  // 운동 기록 패칭
   const fetchWorkouts = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("workouts")
       .select("*")
       .eq("member_id", memberId)
-      .order("created_at", { ascending: false }); // ✅ fallback
+      .order("created_at", { ascending: false });
 
-    if (data) setWorkouts(data);
+    if (!error && data) setWorkouts(data);
+    else setWorkouts([]);
   };
 
   useEffect(() => {
-    fetchWorkouts();
+    if (memberId) fetchWorkouts();
   }, [memberId]);
+
+  // 토스트 메시지 중복 방지
+  const showToast = (msg: string, type: "success" | "error" = "success") => {
+    setToast(msg);
+    setToastType(type);
+    if (toastTimeout.current) clearTimeout(toastTimeout.current);
+    toastTimeout.current = setTimeout(() => setToast(""), 2500);
+  };
 
   const handleSave = async () => {
     if (!date.trim() || !content.trim()) {
-      setToast("⚠️ 날짜와 운동 기록을 모두 입력해주세요.");
-      setToastType("error");
+      showToast("⚠️ 날짜와 운동 기록을 모두 입력해주세요.", "error");
       return;
     }
 
@@ -45,30 +55,25 @@ export default function WorkoutSection({ memberId, onSaved }: WorkoutSectionProp
     const payload: WorkoutInsert = {
       member_id: memberId,
       title: content,
-      created_at: date, // ✅ created_at 사용
+      created_at: date,
     };
 
     const finalPayload = editId ? { ...payload, id: editId } : payload;
 
-    const { error } = await supabase
-      .from("workouts")
-      .upsert([finalPayload]); // ✅ 배열로 감싸기
+    const { error } = await supabase.from("workouts").upsert([finalPayload]);
 
     if (error) {
-      setToast("❌ 저장 실패: " + error.message);
-      setToastType("error");
+      showToast("❌ 저장 실패: " + error.message, "error");
     } else {
-      setToast(editId ? "✅ 운동 기록 수정 완료" : "✅ 운동 기록 저장 완료");
-      setToastType("success");
+      showToast(editId ? "✅ 운동 기록 수정 완료" : "✅ 운동 기록 저장 완료", "success");
       setDate("");
       setContent("");
       setEditId(null);
       await fetchWorkouts();
-      onSaved?.(); // ✅ 저장 후 콜백 호출
+      if (onSaved) onSaved();
     }
 
     setLoading(false);
-    setTimeout(() => setToast(""), 3000);
   };
 
   const handleEdit = (w: WorkoutRow) => {
@@ -78,16 +83,15 @@ export default function WorkoutSection({ memberId, onSaved }: WorkoutSectionProp
   };
 
   const handleDelete = async (id: string) => {
+    setLoading(true);
     const { error } = await supabase.from("workouts").delete().eq("id", id);
     if (error) {
-      setToast("❌ 삭제 실패");
-      setToastType("error");
+      showToast("❌ 삭제 실패", "error");
     } else {
-      setToast("🗑️ 삭제 완료");
-      setToastType("success");
+      showToast("🗑️ 삭제 완료", "success");
       await fetchWorkouts();
     }
-    setTimeout(() => setToast(""), 3000);
+    setLoading(false);
   };
 
   return (
@@ -103,7 +107,9 @@ export default function WorkoutSection({ memberId, onSaved }: WorkoutSectionProp
         <textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          placeholder="오늘의 운동 프로그램을 자유롭게 작성해주세요.\n예시)\n1. 스쿼트 20회 3세트\n2. 데드리프트 15회 4세트"
+          placeholder={
+            "오늘의 운동 프로그램을 자유롭게 작성해주세요.\n예시)\n1. 스쿼트 20회 3세트\n2. 데드리프트 15회 4세트"
+          }
           rows={5}
           className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm"
         />
@@ -145,12 +151,14 @@ export default function WorkoutSection({ memberId, onSaved }: WorkoutSectionProp
                 <button
                   onClick={() => handleEdit(w)}
                   className="text-gray-400 hover:text-indigo-600"
+                  aria-label="운동 수정"
                 >
                   <i className="fas fa-edit" />
                 </button>
                 <button
                   onClick={() => handleDelete(w.id)}
                   className="text-gray-400 hover:text-red-600"
+                  aria-label="운동 삭제"
                 >
                   <i className="fas fa-trash" />
                 </button>

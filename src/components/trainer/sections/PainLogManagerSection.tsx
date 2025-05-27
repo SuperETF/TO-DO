@@ -20,6 +20,7 @@ export default function PainLogManagerSection({ memberId }: Props) {
   const [toastType, setToastType] = useState<"success" | "error">("success");
   const [editKey, setEditKey] = useState<string | null>(null);
 
+  // 통증 기록 패칭
   const fetchLogs = async () => {
     const { data, error } = await supabase
       .from("pain_logs")
@@ -37,9 +38,11 @@ export default function PainLogManagerSection({ memberId }: Props) {
   };
 
   useEffect(() => {
-    fetchLogs();
+    if (memberId) fetchLogs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [memberId]);
 
+  // 저장 및 수정
   const handleSave = async () => {
     const trimmedArea = area.trim();
     if (!trimmedArea) {
@@ -57,7 +60,7 @@ export default function PainLogManagerSection({ memberId }: Props) {
     const { error } = await supabase
       .from("pain_logs")
       .upsert([payload], {
-        onConflict: "member_id,date,pain_area", // ✅ 문자열로
+        onConflict: "member_id,date,pain_area",
       });
 
     if (error) {
@@ -67,9 +70,14 @@ export default function PainLogManagerSection({ memberId }: Props) {
       showToast(editKey ? "✅ 수정 완료" : "✅ 통증 기록 저장 완료", "success");
       setEditKey(null);
       await fetchLogs();
+      // 폼 초기화
+      setDate(new Date().toISOString().slice(0, 10));
+      setScore(0);
+      setArea("");
     }
   };
 
+  // 삭제
   const handleDelete = async (targetDate: string, targetArea?: string) => {
     const { error } = await supabase
       .from("pain_logs")
@@ -83,9 +91,17 @@ export default function PainLogManagerSection({ memberId }: Props) {
     } else {
       showToast("🗑️ 삭제 완료", "success");
       await fetchLogs();
+      // 편집 중 삭제시 폼 초기화
+      if (editKey === `${targetDate}-${targetArea}`) {
+        setEditKey(null);
+        setDate(new Date().toISOString().slice(0, 10));
+        setScore(0);
+        setArea("");
+      }
     }
   };
 
+  // 토스트
   const showToast = (message: string, type: "success" | "error") => {
     setToast(message);
     setToastType(type);
@@ -142,6 +158,9 @@ export default function PainLogManagerSection({ memberId }: Props) {
       <div>
         <h4 className="text-sm font-semibold mb-2">최근 통증 기록</h4>
         <div className="space-y-2 text-sm max-h-64 overflow-y-auto">
+          {recentLogs.length === 0 && (
+            <div className="text-gray-400 text-sm">기록이 없습니다.</div>
+          )}
           {recentLogs.map((log, i) => {
             const key = `${log.date}-${log.pain_area}`;
             return (
@@ -190,7 +209,9 @@ export default function PainLogManagerSection({ memberId }: Props) {
 
       {toast && (
         <div
-          className={`text-sm text-center font-medium ${toastType === "success" ? "text-green-600" : "text-red-500"}`}
+          className={`text-sm text-center font-medium transition ${
+            toastType === "success" ? "text-green-600" : "text-red-500"
+          }`}
         >
           {toast}
         </div>

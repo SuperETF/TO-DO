@@ -6,14 +6,17 @@ import * as echarts from "echarts";
 type BodyInsert = Database["public"]["Tables"]["body_compositions"]["Insert"];
 type BodyRow = Database["public"]["Tables"]["body_compositions"]["Row"];
 
-interface Props {
+export interface BodyCompositionSectionProps {
   memberId: string;
   onSaved?: () => void;
 }
 
-export default function BodyCompositionSection({ memberId }: Props) {
+export default function BodyCompositionSection({
+  memberId,
+  onSaved,
+}: BodyCompositionSectionProps) {
   const [compositions, setCompositions] = useState<BodyRow[]>([]);
-  const [editId, setEditId] = useState<string | null>(null); // ✅ string
+  const [editId, setEditId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState("");
@@ -29,6 +32,7 @@ export default function BodyCompositionSection({ memberId }: Props) {
 
   const chartRef = useRef<HTMLDivElement>(null);
 
+  // 데이터 패칭
   const fetchData = async () => {
     const { data } = await supabase
       .from("body_compositions")
@@ -36,13 +40,15 @@ export default function BodyCompositionSection({ memberId }: Props) {
       .eq("member_id", memberId)
       .order("date", { ascending: true });
 
-    if (data) setCompositions(data);
+    setCompositions(data || []);
   };
 
   useEffect(() => {
     if (memberId) fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [memberId]);
 
+  // 차트 렌더링
   useEffect(() => {
     if (chartRef.current && compositions.length > 0) {
       const chart = echarts.init(chartRef.current);
@@ -63,12 +69,19 @@ export default function BodyCompositionSection({ memberId }: Props) {
         ],
       });
 
+      // 차트 인스턴스 dispose 처리
       return () => chart.dispose();
     }
   }, [compositions]);
 
+  // 폼 제출 핸들러
   const handleSubmit = async () => {
-    if (!form.date || !form.weight || !form.bodyFat || !form.muscle) return;
+    if (!form.date || !form.weight || !form.bodyFat || !form.muscle) {
+      setToast("모든 값을 입력해주세요.");
+      setToastType("error");
+      setTimeout(() => setToast(""), 2000);
+      return;
+    }
     setLoading(true);
 
     const payload: BodyInsert = {
@@ -82,26 +95,32 @@ export default function BodyCompositionSection({ memberId }: Props) {
 
     const { error } = await supabase
       .from("body_compositions")
-      .upsert([
-        editId ? { ...payload, id: editId } : payload
-      ]); // ✅ 배열로 감싸고 id 추가
+      .upsert([editId ? { ...payload, id: editId } : payload]);
 
     if (error) {
       setToast("❌ 저장 실패: " + error.message);
       setToastType("error");
     } else {
-      setToast("✅ 체성분 정보 저장 완료");
+      setToast(editId ? "✅ 체성분 정보 수정 완료" : "✅ 체성분 정보 저장 완료");
       setToastType("success");
-      setForm({ date: new Date().toISOString().slice(0, 10), weight: "", bodyFat: "", muscle: "", bmi: "" });
+      setForm({
+        date: new Date().toISOString().slice(0, 10),
+        weight: "",
+        bodyFat: "",
+        muscle: "",
+        bmi: "",
+      });
       setEditId(null);
       setFormOpen(false);
       fetchData();
+      if (onSaved) onSaved();
     }
 
     setLoading(false);
     setTimeout(() => setToast(""), 3000);
   };
 
+  // 수정 핸들러
   const handleEdit = (c: BodyRow) => {
     setForm({
       date: c.date,
@@ -114,9 +133,14 @@ export default function BodyCompositionSection({ memberId }: Props) {
     setFormOpen(true);
   };
 
+  // 삭제 핸들러
   const handleDelete = async (id: string) => {
+    setLoading(true);
     await supabase.from("body_compositions").delete().eq("id", id);
-    fetchData();
+    setEditId(null);
+    setFormOpen(false);
+    await fetchData();
+    setLoading(false);
   };
 
   return (
@@ -124,10 +148,10 @@ export default function BodyCompositionSection({ memberId }: Props) {
       <div className="flex justify-between items-center">
         <h3 className="text-base font-bold text-gray-800">체성분 분석</h3>
         <button
-          onClick={() => setFormOpen(!formOpen)}
+          onClick={() => setFormOpen((v) => !v)}
           className="bg-[#4C51BF] text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-indigo-700"
         >
-          + 새 체성분 기록
+          {formOpen ? "닫기" : "+ 새 체성분 기록"}
         </button>
       </div>
 
@@ -165,20 +189,27 @@ export default function BodyCompositionSection({ memberId }: Props) {
                 <span>
                   {c.weight}kg / {c.body_fat_percent}% / {c.muscle_mass}kg
                 </span>
-                <button onClick={() => handleEdit(c)} className="text-gray-400 hover:text-indigo-600">
+                <button onClick={() => handleEdit(c)} className="text-gray-400 hover:text-indigo-600" aria-label="수정">
                   <i className="fas fa-edit"></i>
                 </button>
-                <button onClick={() => handleDelete(c.id)} className="text-gray-400 hover:text-red-500">
+                <button onClick={() => handleDelete(c.id)} className="text-gray-400 hover:text-red-500" aria-label="삭제">
                   <i className="fas fa-trash"></i>
                 </button>
               </div>
             </div>
           ))}
+          {compositions.length === 0 && (
+            <div className="text-gray-400 text-sm">체성분 기록이 없습니다.</div>
+          )}
         </div>
       </div>
 
       {toast && (
-        <p className={`text-center text-sm font-medium ${toastType === "success" ? "text-green-600" : "text-red-500"}`}>{toast}</p>
+        <p className={`text-center text-sm font-medium transition ${
+          toastType === "success" ? "text-green-600" : "text-red-500"
+        }`}>
+          {toast}
+        </p>
       )}
     </div>
   );
