@@ -10,13 +10,13 @@ interface WorkoutSectionProps {
   onSaved?: () => void;
 }
 
-export default function WorkoutSection({ memberId }: WorkoutSectionProps) {
+export default function WorkoutSection({ memberId, onSaved }: WorkoutSectionProps) {
   const [date, setDate] = useState<string>("");
   const [content, setContent] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState("");
   const [toastType, setToastType] = useState<"success" | "error">("success");
-  const [editId, setEditId] = useState<number | null>(null);
+  const [editId, setEditId] = useState<string | null>(null); // ✅ string으로 변경
   const [workouts, setWorkouts] = useState<WorkoutRow[]>([]);
 
   const fetchWorkouts = async () => {
@@ -24,7 +24,7 @@ export default function WorkoutSection({ memberId }: WorkoutSectionProps) {
       .from("workouts")
       .select("*")
       .eq("member_id", memberId)
-      .order("date", { ascending: false });
+      .order("created_at", { ascending: false }); // ✅ fallback
 
     if (data) setWorkouts(data);
   };
@@ -44,13 +44,15 @@ export default function WorkoutSection({ memberId }: WorkoutSectionProps) {
 
     const payload: WorkoutInsert = {
       member_id: memberId,
-      date,
       title: content,
+      created_at: date, // ✅ created_at 사용
     };
+
+    const finalPayload = editId ? { ...payload, id: editId } : payload;
 
     const { error } = await supabase
       .from("workouts")
-      .upsert(editId ? { ...payload, id: editId } : payload);
+      .upsert([finalPayload]); // ✅ 배열로 감싸기
 
     if (error) {
       setToast("❌ 저장 실패: " + error.message);
@@ -62,6 +64,7 @@ export default function WorkoutSection({ memberId }: WorkoutSectionProps) {
       setContent("");
       setEditId(null);
       await fetchWorkouts();
+      onSaved?.(); // ✅ 저장 후 콜백 호출
     }
 
     setLoading(false);
@@ -69,12 +72,12 @@ export default function WorkoutSection({ memberId }: WorkoutSectionProps) {
   };
 
   const handleEdit = (w: WorkoutRow) => {
-    setDate(w.date ?? "");
-    setContent(w.title);
+    setDate(w.created_at?.split("T")[0] ?? "");
+    setContent(w.title ?? "");
     setEditId(w.id);
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     const { error } = await supabase.from("workouts").delete().eq("id", id);
     if (error) {
       setToast("❌ 삭제 실패");
@@ -100,12 +103,7 @@ export default function WorkoutSection({ memberId }: WorkoutSectionProps) {
         <textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          placeholder="오늘의 운동 프로그램을 자유롭게 작성해주세요.
-예시)
-1. 스쿼트 20회 3세트
-2. 데드리프트 15회 4세트
-3. 런지 좌우 각 15회 3세트
-4. 플랭크 1분 3세트"
+          placeholder="오늘의 운동 프로그램을 자유롭게 작성해주세요.\n예시)\n1. 스쿼트 20회 3세트\n2. 데드리프트 15회 4세트"
           rows={5}
           className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm"
         />
@@ -138,7 +136,9 @@ export default function WorkoutSection({ memberId }: WorkoutSectionProps) {
               className="flex justify-between items-start text-gray-700 border-b pb-2"
             >
               <div className="flex flex-col">
-                <span className="text-xs text-gray-400">{w.date}</span>
+                <span className="text-xs text-gray-400">
+                  {w.created_at?.split("T")[0]}
+                </span>
                 <span>{w.title}</span>
               </div>
               <div className="flex space-x-2 pt-1">

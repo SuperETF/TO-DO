@@ -5,6 +5,7 @@ import { useAchievement } from "../../../hooks/useAchievement";
 interface WeeklyExerciseSectionProps {
   memberId: string;
   registrationDate: string;
+  refetch?: () => Promise<void>;
 }
 
 export default function WeeklyExerciseSection({

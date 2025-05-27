@@ -2,6 +2,11 @@ import { useAchievement } from "../../../hooks/useAchievement";
 
 interface Props {
   memberId: string;
+  level: number;
+  percent: number;
+  missionCount: number;
+  workoutCount: number;
+  routineCount: number;
 }
 
 export default function LevelBadgeSection({ memberId }: Props) {

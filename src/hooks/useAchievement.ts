@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { getISOWeek } from "date-fns";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 
 export function useAchievement(memberId: string) {
   const [missionCount, setMissionCount] = useState(0);
@@ -65,7 +66,9 @@ export function useAchievement(memberId: string) {
     if (!memberId || newLevel < 10 || newLevel % 10 !== 0) return;
 
     const rewardLevel = Math.floor(newLevel / 10) * 10;
-    const currentMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
+    const currentMonth = `${new Date().getFullYear()}-${String(
+      new Date().getMonth() + 1
+    ).padStart(2, "0")}`;
 
     const { data, error } = await supabase
       .from("lesson_rewards")
@@ -74,12 +77,16 @@ export function useAchievement(memberId: string) {
       .eq("reward_level", rewardLevel)
       .eq("reward_month", currentMonth);
 
-    if (!error && data.length === 0) {
-      const { error: insertError } = await supabase.from("lesson_rewards").insert({
-        member_id: memberId,
-        reward_level: rewardLevel,
-        reward_month: currentMonth,
-      });
+    if (!error && (data?.length || 0) === 0) {
+      const { error: insertError } = await supabase
+        .from("lesson_rewards")
+        .insert([
+          {
+            member_id: memberId,
+            reward_level: rewardLevel,
+            reward_month: currentMonth,
+          },
+        ]);
 
       if (!insertError) {
         alert(`🎉 레벨 ${rewardLevel} 도달! 레슨권 1매가 지급되었습니다!`);
@@ -97,7 +104,7 @@ export function useAchievement(memberId: string) {
     if (!memberId) return;
 
     const tables = ["mission_logs", "workout_logs", "routine_logs"];
-    const channels = [];
+    const channels: RealtimeChannel[] = [];
 
     for (const table of tables) {
       const channel = supabase

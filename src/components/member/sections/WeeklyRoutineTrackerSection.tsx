@@ -52,7 +52,6 @@ export default function WeeklyRoutineTrackerSection({ memberId }: Props) {
     const existing = routines.find((r) => r.day === day);
 
     if (existing?.completed) {
-      // 클릭 → 해제
       const { error } = await supabase
         .from("routine_logs")
         .delete()
@@ -64,7 +63,6 @@ export default function WeeklyRoutineTrackerSection({ memberId }: Props) {
         await refetch();
       }
     } else {
-      // 클릭 → 체크
       const newLog = {
         member_id: memberId,
         date: isoDate,
@@ -75,8 +73,8 @@ export default function WeeklyRoutineTrackerSection({ memberId }: Props) {
 
       const { error } = await supabase
         .from("routine_logs")
-        .upsert(newLog, {
-          onConflict: ["member_id", "date"],
+        .upsert([newLog], {
+          onConflict: "member_id,date", // ✅ string 하나로 처리
         });
 
       if (!error) {

@@ -24,11 +24,7 @@ export default function TrainerRecommendationInputSection({ memberId }: Props) {
         .eq("id", user.id)
         .maybeSingle();
 
-      if (data?.name) {
-        setTrainerName(data.name);
-      } else {
-        setTrainerName(user.email); // fallback
-      }
+      setTrainerName(data?.name ?? user.email); // ✅ fallback 포함 safe set
     };
 
     fetchTrainerName();
@@ -43,13 +39,17 @@ export default function TrainerRecommendationInputSection({ memberId }: Props) {
     const { error } = await supabase
       .from("trainer_recommendations")
       .upsert(
+        [
+          {
+            member_id: memberId,
+            title,
+            video_url: videoUrl,
+            trainer: trainerName,
+          },
+        ],
         {
-          member_id: memberId,
-          title,
-          video_url: videoUrl,
-          trainer: trainerName,
-        },
-        { onConflict: ["member_id"] }
+          onConflict: "member_id", // ✅ string 하나로 처리
+        }
       );
 
     if (error) {
@@ -83,7 +83,6 @@ export default function TrainerRecommendationInputSection({ memberId }: Props) {
         />
       </div>
 
-      {/* ✅ 트레이너 이름 표시 */}
       <div>
         <label className="text-sm text-gray-600 mb-1 block">트레이너</label>
         <div className="bg-gray-100 text-gray-700 text-sm px-3 py-2 rounded-md">
