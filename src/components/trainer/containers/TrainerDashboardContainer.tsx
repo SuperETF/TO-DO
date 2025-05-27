@@ -58,26 +58,26 @@ export default function TrainerDashboardContainer() {
       </div>
 
       <main className="pt-32 pb-24">
-  <div className="max-w-screen-md sm:max-w-screen-lg mx-auto px-4">
-    <div
-      ref={scrollContainerRef}
-      className="overflow-x-auto snap-x snap-mandatory touch-pan-x scrollbar-none"
-    >
-      <div className="flex gap-4">
-        {members.map((member) => (
+        <div className="max-w-screen-md sm:max-w-screen-lg mx-auto px-4">
           <div
-            key={member.id}
-            id={`member-${member.id}`}
-            className="min-w-full snap-center"
+            ref={scrollContainerRef}
+            className="overflow-x-auto snap-x snap-mandatory touch-pan-x scrollbar-none"
+            style={{ WebkitOverflowScrolling: "touch" }}   // ★ 여기 한 줄만 추가!
           >
-            <MemberCard member={member} />
+            <div className="flex gap-4">
+              {members.map((member) => (
+                <div
+                  key={member.id}
+                  id={`member-${member.id}`}
+                  className="min-w-full snap-center"
+                >
+                  <MemberCard member={member} />
+                </div>
+              ))}
+            </div>
           </div>
-        ))}
-      </div>
-    </div>
-  </div>
-</main>
-
+        </div>
+      </main>
     </div>
   );
 }
