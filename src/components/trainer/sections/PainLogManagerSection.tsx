@@ -161,15 +161,15 @@ export default function PainLogManagerSection({ memberId }: Props) {
           {recentLogs.length === 0 && (
             <div className="text-gray-400 text-sm">기록이 없습니다.</div>
           )}
-          {recentLogs.map((log, i) => {
-            const key = `${log.date}-${log.pain_area}`;
-            return (
-              <div key={key} className="flex justify-between items-center border-b border-gray-100 pb-2">
-                <div>
-                  <span>{log.date}</span>
-                  {log.pain_area && (
-                    <span className="ml-2 text-gray-500">({log.pain_area})</span>
-                  )}
+          {recentLogs.map(log => {
+  const key = `${log.date}-${log.pain_area}`;
+  return (
+    <div key={key} className="flex justify-between items-center border-b border-gray-100 pb-2">
+      <div>
+        <span>{log.date}</span>
+        {log.pain_area && (
+          <span className="ml-2 text-gray-500">({log.pain_area})</span>
+        )}
                 </div>
                 <div className="flex items-center space-x-3">
                   <span

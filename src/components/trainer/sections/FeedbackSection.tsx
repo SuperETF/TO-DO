@@ -3,7 +3,6 @@ import { supabase } from "../../../lib/supabaseClient";
 import type { Database } from "../../../types/supabase";
 
 type FeedbackInsert = Database["public"]["Tables"]["feedbacks"]["Insert"];
-type FeedbackRow = Database["public"]["Tables"]["feedbacks"]["Row"];
 
 interface Props {
   memberId: string;
