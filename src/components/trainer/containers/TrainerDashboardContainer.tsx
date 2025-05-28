@@ -9,7 +9,7 @@ export default function TrainerDashboardContainer() {
   const [selectedMemberId, setSelectedMemberId] = useState<string>("");
   const [showMemberRegistrationModal, setShowMemberRegistrationModal] = useState(false);
 
-  // 새 회원 등록 폼 상태
+  // 회원 등록 폼 상태
   const [newMemberName, setNewMemberName] = useState("");
   const [newMemberPhoneLast4, setNewMemberPhoneLast4] = useState("");
   const [registerError, setRegisterError] = useState("");
@@ -19,13 +19,11 @@ export default function TrainerDashboardContainer() {
 
   useEffect(() => {
     fetchMembers();
-    // eslint-disable-next-line
   }, []);
 
   const fetchMembers = async () => {
     const trainerId = localStorage.getItem("trainer_id");
     if (!trainerId) return;
-
     const { data, error } = await supabase
       .from("members")
       .select("*")
@@ -52,7 +50,7 @@ export default function TrainerDashboardContainer() {
     el?.scrollIntoView({ behavior: "smooth", inline: "center" });
   };
 
-  // 🟢 회원 등록 함수
+  // 회원 등록 함수
   const handleRegisterMember = async () => {
     setRegisterError("");
     if (!newMemberName || !newMemberPhoneLast4) {
@@ -90,8 +88,7 @@ export default function TrainerDashboardContainer() {
   return (
     <div className="bg-gray-50 min-h-screen">
       <Header />
-
-      {/* 상단 멤버 선택 스크롤바 */}
+      {/* 상단 MemberScrollBar */}
       <div className="fixed top-16 w-full z-30 bg-white shadow-sm">
         <MemberScrollBar
           members={members}
@@ -100,15 +97,15 @@ export default function TrainerDashboardContainer() {
         />
       </div>
 
-      {/* 가로 슬라이드 멤버 카드 */}
-      <main className="pt-32 pb-24">
+      {/* 상단 여백: pt-[7rem] (헤더+멤버바 높이 합산) */}
+      <main className="pt-[7rem] pb-24">
         <div className="max-w-screen-md sm:max-w-screen-lg mx-auto px-4">
           <div
             ref={scrollContainerRef}
             className="overflow-x-auto snap-x snap-mandatory touch-pan-x scrollbar-none"
             style={{
               WebkitOverflowScrolling: "touch",
-              height: "calc(100vh - 9rem)", // 헤더/상단바 높이에 따라 조정
+              height: "calc(100vh - 9rem)" // 필요에 따라 여백 조정
             }}
           >
             <div className="flex gap-4 items-stretch h-full">

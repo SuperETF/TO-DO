@@ -10,3 +10,13 @@
 .scrollbar-none::-webkit-scrollbar {
   display: none; /* Chrome, Safari */
 }
+
+.scrollbar-none::-webkit-scrollbar {
+  width: 0px;
+  height: 0px;
+  background: transparent;
+}
+.scrollbar-none {
+  scrollbar-width: none;      /* Firefox */
+  -ms-overflow-style: none;   /* IE, Edge */
+}
