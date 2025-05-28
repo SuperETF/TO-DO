@@ -17,7 +17,6 @@ export default function TrainerDashboardContainer() {
 
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
-  // 회원 리스트 불러오기
   useEffect(() => {
     fetchMembers();
     // eslint-disable-next-line
@@ -80,7 +79,7 @@ export default function TrainerDashboardContainer() {
         setShowMemberRegistrationModal(false);
         setNewMemberName("");
         setNewMemberPhoneLast4("");
-        await fetchMembers(); // 등록 후 목록 새로고침
+        await fetchMembers();
       }
     } catch (err) {
       setRegisterError("알 수 없는 오류가 발생했습니다.");
@@ -92,6 +91,7 @@ export default function TrainerDashboardContainer() {
     <div className="bg-gray-50 min-h-screen">
       <Header />
 
+      {/* 상단 멤버 선택 스크롤바 */}
       <div className="fixed top-16 w-full z-30 bg-white shadow-sm">
         <MemberScrollBar
           members={members}
@@ -100,19 +100,23 @@ export default function TrainerDashboardContainer() {
         />
       </div>
 
+      {/* 가로 슬라이드 멤버 카드 */}
       <main className="pt-32 pb-24">
         <div className="max-w-screen-md sm:max-w-screen-lg mx-auto px-4">
           <div
             ref={scrollContainerRef}
             className="overflow-x-auto snap-x snap-mandatory touch-pan-x scrollbar-none"
-            style={{ WebkitOverflowScrolling: "touch" }}
+            style={{
+              WebkitOverflowScrolling: "touch",
+              height: "calc(100vh - 9rem)", // 헤더/상단바 높이에 따라 조정
+            }}
           >
-            <div className="flex gap-4">
+            <div className="flex gap-4 items-stretch h-full">
               {members.map((member) => (
                 <div
                   key={member.id}
                   id={`member-${member.id}`}
-                  className="min-w-full snap-center"
+                  className="min-w-full max-w-full snap-center h-full"
                 >
                   <MemberCard member={member} />
                 </div>
@@ -122,7 +126,7 @@ export default function TrainerDashboardContainer() {
         </div>
       </main>
 
-      {/* 🟢 새 회원 등록 버튼 (FAB) */}
+      {/* 플로팅 회원 등록 버튼 */}
       <button
         onClick={() => setShowMemberRegistrationModal(true)}
         className="fixed right-4 bottom-24 bg-indigo-600 text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center hover:bg-indigo-700 transition z-20"
@@ -131,7 +135,7 @@ export default function TrainerDashboardContainer() {
         <i className="fas fa-user-plus text-2xl"></i>
       </button>
 
-      {/* 🟡 회원 등록 모달 */}
+      {/* 회원 등록 모달 */}
       {showMemberRegistrationModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center">
           <div className="bg-white p-6 rounded-lg max-w-md w-full">
