@@ -38,7 +38,8 @@ export default function MemberCardContainer({ member }: Props) {
   return (
     <div
       id={`member-${member.id}`}
-      className="rounded-xl bg-white shadow-lg overflow-hidden"
+      className="rounded-xl bg-white shadow-lg overflow-y-auto max-h-[80vh] touch-pan-y"
+      style={{ overscrollBehaviorY: "contain" }}
     >
       <div className="bg-gradient-to-r from-[#6C4CF1] to-[#A083F7] text-white p-4">
         <h2 className="text-lg font-bold">{member.name}</h2>
