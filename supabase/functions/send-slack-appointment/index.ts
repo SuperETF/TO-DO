@@ -2,8 +2,25 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 
 serve(async (req) => {
   try {
-    const { type, record, old_record } = await req.json();
+    // ✅ Content-Type 강제 확인
+    const contentType = req.headers.get("content-type");
+    if (contentType !== "application/json") {
+      console.error("❌ Content-Type이 application/json이 아님:", contentType);
+      return new Response("Invalid Content-Type", { status: 415 });
+    }
+
+    // ✅ JSON 파싱
+    let body;
+    try {
+      body = await req.json();
+    } catch (err) {
+      console.error("❌ JSON 파싱 실패:", err);
+      return new Response("Invalid JSON", { status: 400 });
+    }
+
+    const { type, record, old_record } = body;
     const data = type === "INSERT" ? record : old_record;
+
     const {
       member_id,
       appointment_date,
@@ -12,19 +29,18 @@ serve(async (req) => {
       type: apptType,
     } = data;
 
-    // 🔐 환경변수
+    // ✅ 환경변수 불러오기
     const webhookUrl = Deno.env.get("SLACK_WEBHOOK_URL");
-    const supabaseUrl = "https://ymmkxglmzbsdazthmghl.supabase.co";
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    // ✅ 환경변수 누락 체크
-    if (!webhookUrl || !anonKey || !serviceRoleKey) {
+    if (!webhookUrl || !supabaseUrl || !anonKey || !serviceRoleKey) {
       console.error("❌ 환경변수 누락");
-      return new Response("환경변수 누락", { status: 500 });
+      return new Response("Missing env vars", { status: 500 });
     }
 
-    // 🔍 회원 조회
+    // ✅ 회원 정보 조회
     const memberRes = await fetch(
       `${supabaseUrl}/rest/v1/members?id=eq.${member_id}&select=name,trainer_id`,
       {
@@ -36,16 +52,10 @@ serve(async (req) => {
       }
     );
 
-    if (!memberRes.ok) {
-      const errText = await memberRes.text();
-      console.error("❌ 회원 조회 실패:", errText);
-      return new Response("회원 정보 조회 실패", { status: 500 });
-    }
-
     const member = (await memberRes.json())[0];
-    let trainerName = "N/A";
 
-    // 🔍 트레이너 조회
+    // ✅ 트레이너 정보 조회
+    let trainerName = "N/A";
     if (member?.trainer_id) {
       const trainerRes = await fetch(
         `${supabaseUrl}/rest/v1/trainers?id=eq.${member.trainer_id}&select=name`,
@@ -57,14 +67,11 @@ serve(async (req) => {
           },
         }
       );
-
-      if (trainerRes.ok) {
-        const trainer = (await trainerRes.json())[0];
-        trainerName = trainer?.name || "N/A";
-      }
+      const trainer = (await trainerRes.json())[0];
+      trainerName = trainer?.name || "N/A";
     }
 
-    // 📩 메시지 생성
+    // ✅ Slack 메시지 작성
     const emoji = type === "INSERT" ? "📅" : "🚫";
     const title = type === "INSERT" ? "[신규 예약 등록]" : "[예약 취소됨]";
 
@@ -85,14 +92,15 @@ ${type === "INSERT" ? `📝 사유: ${reason || "-없음-"}` : ""}`,
     });
 
     if (!slackRes.ok) {
-      const slackErr = await slackRes.text();
-      console.error("❌ Slack 전송 실패:", slackErr);
+      const err = await slackRes.text();
+      console.error("❌ Slack 전송 실패:", err);
       return new Response("Slack 전송 실패", { status: 500 });
     }
 
     return new Response("Slack 전송 완료", { status: 200 });
+
   } catch (err) {
-    console.error("❌ 전반적인 처리 실패:", err);
+    console.error("❌ send-slack-appointment 함수 전체 실패:", err);
     return new Response("함수 처리 중 오류", { status: 500 });
   }
 });
