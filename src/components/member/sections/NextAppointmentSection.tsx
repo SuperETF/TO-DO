@@ -43,14 +43,12 @@ export default function NextAppointmentSection({ memberId }: Props) {
   const handleCreateAppointment = async () => {
     if (!newDate || !newTime) return alert("날짜와 시간을 입력해주세요.");
 
-    // 기존 personal 예약 삭제
     await supabase
       .from("appointments")
       .delete()
       .eq("member_id", memberId)
       .eq("type", "personal");
 
-    // 새로운 personal 예약 삽입
     const { error } = await supabase.from("appointments").insert({
       member_id: memberId,
       appointment_date: newDate,
@@ -116,7 +114,6 @@ export default function NextAppointmentSection({ memberId }: Props) {
     <section className="bg-white rounded-xl shadow-sm p-4 mb-6">
       <h2 className="text-lg font-semibold mb-3">다음 예약</h2>
 
-      {/* 1:1 레슨 */}
       {lesson && (
         <AppointmentCard
           title="1:1 레슨"
@@ -126,7 +123,6 @@ export default function NextAppointmentSection({ memberId }: Props) {
         />
       )}
 
-      {/* 개인 운동 */}
       {personal && (
         <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
@@ -144,7 +140,7 @@ export default function NextAppointmentSection({ memberId }: Props) {
             </div>
           </div>
           <div className="flex items-center">
-            <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center text-purple-500 mr-3">
+            <div className={`w-12 h-12 ${"bg-purple-100"} rounded-full flex items-center justify-center text-purple-500 mr-3`}>
               <i className="fas fa-dumbbell text-xl"></i>
             </div>
             <div className="flex-1">
@@ -158,7 +154,6 @@ export default function NextAppointmentSection({ memberId }: Props) {
         </div>
       )}
 
-      {/* 예약 모달 버튼 */}
       <button
         className="w-full bg-teal-500 text-white py-3 rounded-lg font-medium mt-2"
         onClick={() => setShowModal(true)}
@@ -166,7 +161,6 @@ export default function NextAppointmentSection({ memberId }: Props) {
         <i className="fas fa-plus mr-2"></i>새로운 예약하기
       </button>
 
-      {/* 예약 모달 */}
       {showModal && (
         <div className="fixed inset-0 z-40 bg-black bg-opacity-40 flex items-center justify-center">
           <div className="bg-white rounded-xl p-6 w-full max-w-sm shadow-lg max-h-[90vh] overflow-y-auto">
@@ -187,7 +181,7 @@ export default function NextAppointmentSection({ memberId }: Props) {
               <div className="grid grid-cols-4 gap-2">
                 {Array.from({ length: 24 }, (_, i) => {
                   const hour = i.toString().padStart(2, "0");
-                  const timeValue = `${hour}:00:00`;
+                  const timeValue = `${hour}:00`;
                   const isSelected = newTime === timeValue;
                   return (
                     <button
@@ -229,7 +223,6 @@ export default function NextAppointmentSection({ memberId }: Props) {
   );
 }
 
-// 서브 컴포넌트
 function AppointmentCard({
   title,
   appointment,
@@ -265,7 +258,6 @@ function AppointmentCard({
   );
 }
 
-// 포맷 유틸
 function formatDate(dateStr: string) {
   const date = new Date(dateStr);
   return date.toLocaleDateString("ko-KR", {

@@ -62,7 +62,7 @@ export default function AppointmentSection({ memberId }: Props) {
       appointment_date: date,
       appointment_time: time,
       reason,
-      type: "lesson", // ✅ 필수: lesson 예약
+      type: "lesson", // ✅ lesson 타입 필수
     };
 
     const { error } = await supabase.from("appointments").insert(payload);
