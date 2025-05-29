@@ -79,11 +79,12 @@ export default function AppointmentSection({ memberId }: Props) {
     setLoading(false);
     setTimeout(() => setToast(""), 3000);
   };
-  
-  const timeOptions = Array.from({ length: 12 }, (_, i) => {
-    const hour = i + 9;
-    return [`${hour}:00`, `${hour}:30`];
-  }).flat();
+
+  const timeOptions = Array.from({ length: 48 }, (_, i) => {
+  const hour = String(Math.floor(i / 2)).padStart(2, "0");
+  const minute = i % 2 === 0 ? "00" : "30";
+  return `${hour}:${minute}`;
+});
 
   return (
     <div className="space-y-5">
