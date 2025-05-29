@@ -23,7 +23,6 @@ export default function NextAppointmentSection({ memberId }: Props) {
 
   const fetchAppointments = async () => {
     setLoading(true);
-
     const { data, error } = await supabase
       .from("appointments")
       .select("id, appointment_date, appointment_time, reason, type")
@@ -31,11 +30,8 @@ export default function NextAppointmentSection({ memberId }: Props) {
       .order("appointment_date", { ascending: true });
 
     if (!error && data) {
-      const personalAppointment = data.find((item) => item.type === "personal") || null;
-      const lessonAppointment = data.find((item) => item.type === "lesson") || null;
-
-      setPersonal(personalAppointment);
-      setLesson(lessonAppointment);
+      setPersonal(data.find((item) => item.type === "personal") || null);
+      setLesson(data.find((item) => item.type === "lesson") || null);
     }
 
     setLoading(false);
@@ -43,21 +39,23 @@ export default function NextAppointmentSection({ memberId }: Props) {
 
   const handleCreateAppointment = async () => {
     if (!newDate || !newTime) return alert("날짜와 시간을 입력해주세요.");
-
+  
+    const correctedTime = newTime.length === 5 ? `${newTime}:00` : newTime;
+  
     await supabase
       .from("appointments")
       .delete()
       .eq("member_id", memberId)
       .eq("type", "personal");
-
+  
     const { error } = await supabase.from("appointments").insert({
       member_id: memberId,
       appointment_date: newDate,
-      appointment_time: newTime,
+      appointment_time: correctedTime, // ✅ 여기가 핵심
       reason: "개인 운동",
       type: "personal",
     });
-
+  
     if (error) {
       alert("예약 실패: " + error.message);
     } else {
@@ -141,7 +139,7 @@ export default function NextAppointmentSection({ memberId }: Props) {
             </div>
           </div>
           <div className="flex items-center">
-            <div className={`w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center text-purple-500 mr-3`}>
+            <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center text-purple-500 mr-3">
               <i className="fas fa-dumbbell text-xl"></i>
             </div>
             <div className="flex-1">
