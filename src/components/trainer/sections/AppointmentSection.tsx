@@ -23,11 +23,15 @@ export default function AppointmentSection({ memberId }: Props) {
         .select("*")
         .eq("member_id", memberId)
         .eq("appointment_date", date)
+        .eq("type", "lesson")
         .single();
 
       if (data) {
         setTime(data.appointment_time ?? "10:00");
         setReason(data.reason ?? "");
+      } else {
+        setTime("10:00");
+        setReason("");
       }
     };
 
@@ -45,18 +49,23 @@ export default function AppointmentSection({ memberId }: Props) {
 
     setLoading(true);
 
+    // 기존 lesson 예약 삭제
+    await supabase
+      .from("appointments")
+      .delete()
+      .eq("member_id", memberId)
+      .eq("appointment_date", date)
+      .eq("type", "lesson");
+
     const payload: AppointmentInsert = {
       member_id: memberId,
       appointment_date: date,
       appointment_time: time,
       reason,
+      type: "lesson", // ✅ 필수: lesson 예약
     };
 
-    const { error } = await supabase
-      .from("appointments")
-      .upsert(payload, {
-        onConflict: ["member_id", "appointment_date", "appointment_time"] as any,
-      });
+    const { error } = await supabase.from("appointments").insert(payload);
 
     if (error) {
       setToast("❌ 저장 실패: " + error.message);

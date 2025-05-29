@@ -11,7 +11,9 @@ import TrainerCommentSection from "../sections/TrainerCommentSection";
 import PainScoreChartSection from "../sections/PainScoreChartSection";
 import BodyCompositionChartSection from "../sections/BodyCompositionChartSection";
 import WorkoutHistorySection from "../sections/WorkoutHistorySection";
-import { useAchievement } from "../../../hooks/useAchievement"; // ✅ 중앙 상태 훅 추가
+import CenterAnnouncementSection from "../sections/CenterAnnouncementSection";
+import CenterInfoCardSection from "../sections/CenterInfoCardSection";
+import { useAchievement } from "../../../hooks/useAchievement";
 
 export default function MemberDashboardContainer() {
   const [member, setMember] = useState<any>(null);
@@ -33,7 +35,6 @@ export default function MemberDashboardContainer() {
     fetchMember();
   }, []);
 
-  // ✅ member.id 확인 후 성취 상태 훅 적용
   const achievement = useAchievement(member?.id);
 
   if (!member) return <div className="text-center pt-20">Loading...</div>;
@@ -48,22 +49,27 @@ export default function MemberDashboardContainer() {
         </h1>
 
         <div className="space-y-6">
+          {/* ✅ 상단 고정 공지 섹션 */}
+          <CenterAnnouncementSection />
+          <CenterInfoCardSection />
+
+          {/* ✅ 이번 주 운동부터 기존 섹션들 */}
           <WeeklyExerciseSection
             memberId={member.id}
             registrationDate={member.created_at}
-            refetch={achievement.refetch} // ✅ 추가
+            refetch={achievement.refetch}
           />
           <WeeklyRoutineTrackerSection
             memberId={member.id}
-            refetch={achievement.refetch} // ✅ 추가
+            refetch={achievement.refetch}
           />
           <MonthlyMissionSection
             memberId={member.id}
-            refetch={achievement.refetch} // ✅ 추가
+            refetch={achievement.refetch}
           />
           <LevelBadgeSection
             memberId={member.id}
-            {...achievement} // ✅ 상태 바로 전달
+            {...achievement}
           />
           <NextAppointmentSection memberId={member.id} />
           <TrainerCommentSection memberId={member.id} />

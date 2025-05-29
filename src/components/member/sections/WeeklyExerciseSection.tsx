@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Player from "@vimeo/player";
 import { supabase } from "../../../lib/supabaseClient";
 
 interface WeeklyExerciseSectionProps {
@@ -13,17 +14,105 @@ export default function WeeklyExerciseSection({
   refetch,
 }: WeeklyExerciseSectionProps) {
   const [activeTab, setActiveTab] = useState<"weekly" | "trainer">("weekly");
-
-  // 상태 분리
   const [weeklyVideo, setWeeklyVideo] = useState<{ url: string; title: string; trainer: string } | null>(null);
   const [trainerVideo, setTrainerVideo] = useState<{ url: string; title: string; trainer: string } | null>(null);
-
   const [isCompleted, setIsCompleted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [canComplete, setCanComplete] = useState(false);
+  const [progressPercent, setProgressPercent] = useState<number>(0);
 
+  const playerRef = useRef<HTMLIFrameElement>(null);
   const currentWeek = getCurrentWeekSince(registrationDate);
-
   const video = activeTab === "weekly" ? weeklyVideo : trainerVideo;
+
+  const watchIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSavedTimeRef = useRef<number>(0);
+  const lastRecordedSecond = useRef<number>(0);
+  const totalWatchedSeconds = useRef<number>(0);
+  const targetThreshold = useRef<number>(0);
+  const isPlayingRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    if (!video?.url || !playerRef.current) return;
+
+    const player = new Player(playerRef.current);
+    const localKey = `watchedSeconds-${memberId}-${video.url}`;
+
+    // ▶ 복원: Supabase 시청 위치 + localStorage 누적 시간
+    (async () => {
+      const { data } = await supabase
+        .from("watch_progress_logs")
+        .select("seconds")
+        .eq("member_id", memberId)
+        .eq("video_url", video.url)
+        .maybeSingle();
+
+      if (data?.seconds) {
+        player.setCurrentTime(data.seconds).catch(() => {});
+      }
+
+      const savedLocal = localStorage.getItem(localKey);
+      if (savedLocal) {
+        totalWatchedSeconds.current = parseInt(savedLocal, 10) || 0;
+      }
+    })();
+
+    // ▶ 재생/일시정지 상태 감지
+    player.on("play", () => {
+      isPlayingRef.current = true;
+    });
+    player.on("pause", () => {
+      isPlayingRef.current = false;
+    });
+
+    // ▶ 누적 시청 추적 시작
+    player.getDuration().then((duration: number) => {
+      targetThreshold.current = duration * 0.3;
+
+      watchIntervalRef.current = setInterval(async () => {
+        const currentTime = await player.getCurrentTime().catch(() => 0);
+
+        // ▶ 실제 재생 중 + 점프 없음 시 누적
+        if (
+          isPlayingRef.current &&
+          Math.abs(currentTime - lastRecordedSecond.current) <= 1.1
+        ) {
+          totalWatchedSeconds.current += 1;
+          localStorage.setItem(localKey, String(totalWatchedSeconds.current));
+        }
+
+        lastRecordedSecond.current = currentTime;
+
+        // ▶ Supabase에 저장
+        if (Math.abs(currentTime - lastSavedTimeRef.current) >= 5) {
+          await supabase.from("watch_progress_logs").upsert(
+            {
+              member_id: memberId,
+              video_url: video.url,
+              seconds: currentTime,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: ["member_id", "video_url"] }
+          );
+          lastSavedTimeRef.current = currentTime;
+        }
+
+        // ▶ 버튼 조건 + 게이지 바
+        setCanComplete(totalWatchedSeconds.current >= targetThreshold.current);
+
+        const percent = Math.min(
+          (totalWatchedSeconds.current / targetThreshold.current) * 100,
+          100
+        );
+        setProgressPercent(percent);
+      }, 1000);
+    });
+
+    return () => {
+      player.destroy();
+      if (watchIntervalRef.current) clearInterval(watchIntervalRef.current);
+    };
+  }, [video?.url]);
 
   useEffect(() => {
     const checkCompleted = async () => {
@@ -104,6 +193,12 @@ export default function WeeklyExerciseSection({
 
   const handleComplete = async () => {
     if (!video?.url) return;
+
+    if (!canComplete) {
+      alert("아직 영상을 30% 이상 실제로 시청하지 않았습니다.");
+      return;
+    }
+
     setLoading(true);
     const todayStr = new Date().toISOString().split("T")[0];
 
@@ -173,14 +268,26 @@ export default function WeeklyExerciseSection({
 
       {video?.url ? (
         <>
+          {/* ✅ 누적 시청률 기준 게이지 */}
+          <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden mb-3">
+            <div
+              className={`h-full ${
+                canComplete ? "bg-green-500" : "bg-teal-500"
+              } transition-all duration-300`}
+              style={{ width: `${progressPercent}%` }}
+            ></div>
+          </div>
+
           <div className="aspect-video rounded-lg overflow-hidden mb-3">
             <iframe
+              ref={playerRef}
               src={video.url}
               className="w-full h-full"
               allow="autoplay; fullscreen"
               title="운동영상"
             ></iframe>
           </div>
+
           <h3 className="font-medium mb-1">{video.title}</h3>
           <p className="text-gray-600 text-sm mb-3">
             {activeTab === "trainer" ? `${video.trainer} 트레이너` : video.trainer}
@@ -190,7 +297,9 @@ export default function WeeklyExerciseSection({
             <button
               onClick={handleComplete}
               disabled={loading}
-              className="w-full bg-teal-500 text-white py-2 rounded-lg font-medium"
+              className={`w-full py-2 rounded-lg font-medium ${
+                canComplete ? "bg-teal-500 text-white" : "bg-gray-300 text-gray-400"
+              }`}
             >
               ✓ 운동 완료
             </button>

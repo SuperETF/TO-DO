@@ -17,6 +17,7 @@ export type Database = {
           id: string
           member_id: string | null
           reason: string | null
+          type: "personal" | "lesson" // ✅ 추가
         }
         Insert: {
           appointment_date?: string | null
@@ -25,6 +26,7 @@ export type Database = {
           id?: string
           member_id?: string | null
           reason?: string | null
+          type: "personal" | "lesson" // ✅ 추가
         }
         Update: {
           appointment_date?: string | null
@@ -33,6 +35,7 @@ export type Database = {
           id?: string
           member_id?: string | null
           reason?: string | null
+          type?: "personal" | "lesson" // ✅ 추가
         }
         Relationships: [
           {
@@ -44,6 +47,7 @@ export type Database = {
           },
         ]
       }
+      
       body_compositions: {
         Row: {
           bmi: number | null
