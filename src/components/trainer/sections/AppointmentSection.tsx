@@ -46,27 +46,28 @@ export default function AppointmentSection({ memberId }: Props) {
       setToastType("error");
       return;
     }
-
+  
     setLoading(true);
-
-    // 기존 lesson 예약 삭제
+  
+    const correctedTime = time.length === 5 ? `${time}:00` : time;
+  
+    // 🔥 기존 lesson 예약 전부 삭제 (같은 member + type만 기준)
     await supabase
       .from("appointments")
       .delete()
       .eq("member_id", memberId)
-      .eq("appointment_date", date)
       .eq("type", "lesson");
-
+  
     const payload: AppointmentInsert = {
       member_id: memberId,
       appointment_date: date,
-      appointment_time: time,
+      appointment_time: correctedTime,
       reason,
-      type: "lesson", // ✅ lesson 타입 필수
+      type: "lesson",
     };
-
+  
     const { error } = await supabase.from("appointments").insert(payload);
-
+  
     if (error) {
       setToast("❌ 저장 실패: " + error.message);
       setToastType("error");
@@ -74,11 +75,11 @@ export default function AppointmentSection({ memberId }: Props) {
       setToast("✅ 예약 저장 완료");
       setToastType("success");
     }
-
+  
     setLoading(false);
     setTimeout(() => setToast(""), 3000);
   };
-
+  
   const timeOptions = Array.from({ length: 12 }, (_, i) => {
     const hour = i + 9;
     return [`${hour}:00`, `${hour}:30`];
