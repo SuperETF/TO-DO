@@ -50,27 +50,31 @@ export default function WeeklyRoutineTrackerSection({
   const toggleDay = async (day: number) => {
     const today = new Date();
     const weekId = getWeekId(today);
-    // 요일 인덱스 맞추기 (0 = 월요일)
     const base = new Date(today);
-    base.setDate(base.getDate() - ((base.getDay() + 6) % 7) + day); // 월요일 기준으로 맞춤
+    base.setDate(base.getDate() - ((base.getDay() + 6) % 7) + day); // 월요일 기준
     const isoDate = base.toISOString().split("T")[0];
 
     const existing = routines.find((r) => r.day === day);
 
-    if (existing?.completed) {
-      // 체크 해제(삭제)
+    if (existing) {
+      // 이미 row가 있으면 상태 반전 (체크 → 해제 or 해제 → 체크)
+      const newCompleted = !existing.completed;
       const { error } = await supabase
         .from("routine_logs")
-        .delete()
+        .update({ completed: newCompleted })
         .eq("member_id", memberId)
         .eq("date", isoDate);
 
       if (!error) {
-        setRoutines((prev) => prev.filter((r) => r.day !== day));
+        setRoutines((prev) =>
+          prev.map((r) =>
+            r.day === day ? { ...r, completed: newCompleted } : r
+          )
+        );
         if (refetch) await refetch();
       }
     } else {
-      // 체크(추가)
+      // 없으면 체크(추가)
       const newLog = {
         member_id: memberId,
         date: isoDate,
@@ -81,14 +85,10 @@ export default function WeeklyRoutineTrackerSection({
 
       const { error } = await supabase
         .from("routine_logs")
-        .upsert([newLog], {
-          onConflict: "member_id,date",
-        });
+        .insert([newLog]);
 
       if (!error) {
-        const updated = routines.filter((r) => r.day !== day);
-        updated.push(newLog);
-        setRoutines(updated);
+        setRoutines((prev) => [...prev, newLog]);
         if (refetch) await refetch();
       }
     }
