@@ -38,7 +38,7 @@ export default function MemberCardContainer({ member }: Props) {
   return (
     <div
       id={`member-${member.id}`}
-      className="rounded-xl bg-white shadow-lg overflow-y-auto h-full touch-pan-y scrollbar-none"
+      className="rounded-xl bg-white shadow-lg overflow-y-auto h-full touch-pan-y scrollbar-none mt-12" // <-- 여기!
       style={{ overscrollBehaviorY: "contain" }}
     >
       <div className="bg-gradient-to-r from-[#6C4CF1] to-[#A083F7] text-white p-4">
