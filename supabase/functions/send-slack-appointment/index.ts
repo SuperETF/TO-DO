@@ -6,7 +6,7 @@ serve(async (req) => {
   const data = type === "INSERT" ? record : old_record;
   const { member_id, appointment_date, appointment_time, reason, type: apptType } = data;
 
-  const webhookUrl = "https://hooks.slack.com/services/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";
+  const webhookUrl = Deno.env.get("SLACK_WEBHOOK_URL")!;
 
   // 🔍 Supabase에서 member + trainer 이름 조회
   const memberRes = await fetch(
