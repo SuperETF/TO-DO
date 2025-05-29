@@ -86,14 +86,18 @@ export default function WeeklyExerciseSection({
         // ▶ Supabase에 저장
         if (Math.abs(currentTime - lastSavedTimeRef.current) >= 5) {
           await supabase.from("watch_progress_logs").upsert(
-            {
-              member_id: memberId,
-              video_url: video.url,
-              seconds: currentTime,
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: ["member_id", "video_url"] }
+            [
+              {
+                member_id: memberId,
+                video_url: video.url,
+                seconds: currentTime,
+                updated_at: new Date().toISOString(),
+              },
+            ],
+            { onConflict: "member_id,video_url" }
           );
+          
+          
           lastSavedTimeRef.current = currentTime;
         }
 
