@@ -23,18 +23,19 @@ export default function NextAppointmentSection({ memberId }: Props) {
 
   const fetchAppointments = async () => {
     setLoading(true);
-    const today = new Date().toISOString().split("T")[0];
 
     const { data, error } = await supabase
       .from("appointments")
       .select("id, appointment_date, appointment_time, reason, type")
       .eq("member_id", memberId)
-      .gte("appointment_date", today)
       .order("appointment_date", { ascending: true });
 
     if (!error && data) {
-      setPersonal(data.find((item) => item.type === "personal") || null);
-      setLesson(data.find((item) => item.type === "lesson") || null);
+      const personalAppointment = data.find((item) => item.type === "personal") || null;
+      const lessonAppointment = data.find((item) => item.type === "lesson") || null;
+
+      setPersonal(personalAppointment);
+      setLesson(lessonAppointment);
     }
 
     setLoading(false);
@@ -140,7 +141,7 @@ export default function NextAppointmentSection({ memberId }: Props) {
             </div>
           </div>
           <div className="flex items-center">
-            <div className={`w-12 h-12 ${"bg-purple-100"} rounded-full flex items-center justify-center text-purple-500 mr-3`}>
+            <div className={`w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center text-purple-500 mr-3`}>
               <i className="fas fa-dumbbell text-xl"></i>
             </div>
             <div className="flex-1">
