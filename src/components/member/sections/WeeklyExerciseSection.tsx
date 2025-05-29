@@ -13,17 +13,21 @@ export default function WeeklyExerciseSection({
   refetch,
 }: WeeklyExerciseSectionProps) {
   const [activeTab, setActiveTab] = useState<"weekly" | "trainer">("weekly");
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const [title, setTitle] = useState<string>("");
-  const [trainerName, setTrainerName] = useState<string>("");
+
+  // 상태 분리
+  const [weeklyVideo, setWeeklyVideo] = useState<{ url: string; title: string; trainer: string } | null>(null);
+  const [trainerVideo, setTrainerVideo] = useState<{ url: string; title: string; trainer: string } | null>(null);
+
   const [isCompleted, setIsCompleted] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const currentWeek = getCurrentWeekSince(registrationDate);
 
+  const video = activeTab === "weekly" ? weeklyVideo : trainerVideo;
+
   useEffect(() => {
     const checkCompleted = async () => {
-      if (!videoUrl) return;
+      if (!video?.url) return;
 
       let query = supabase
         .from("workout_logs")
@@ -35,15 +39,15 @@ export default function WeeklyExerciseSection({
       if (activeTab === "weekly") {
         query = query.eq("week", currentWeek);
       } else {
-        query = query.eq("video_url", videoUrl);
+        query = query.eq("video_url", video.url);
       }
 
       const { data } = await query.maybeSingle();
-      setIsCompleted(data?.video_url === videoUrl);
+      setIsCompleted(data?.video_url === video.url);
     };
 
     checkCompleted();
-  }, [memberId, currentWeek, activeTab, videoUrl]);
+  }, [memberId, currentWeek, activeTab, video?.url]);
 
   useEffect(() => {
     const fetchWeeklyVideo = async () => {
@@ -55,9 +59,11 @@ export default function WeeklyExerciseSection({
         .maybeSingle();
 
       if (assigned?.video_url) {
-        setVideoUrl(assigned.video_url);
-        setTitle(assigned.title);
-        setTrainerName(assigned.trainer);
+        setWeeklyVideo({
+          url: assigned.video_url,
+          title: assigned.title,
+          trainer: assigned.trainer,
+        });
         return;
       }
 
@@ -68,9 +74,11 @@ export default function WeeklyExerciseSection({
         .maybeSingle();
 
       if (recommended?.video_url) {
-        setVideoUrl(recommended.video_url);
-        setTitle(recommended.title);
-        setTrainerName(`${currentWeek}주차 운동`);
+        setWeeklyVideo({
+          url: recommended.video_url,
+          title: recommended.title,
+          trainer: `${currentWeek}주차 운동`,
+        });
       }
     };
 
@@ -82,9 +90,11 @@ export default function WeeklyExerciseSection({
         .maybeSingle();
 
       if (data?.video_url) {
-        setVideoUrl(data.video_url);
-        setTitle(data.title);
-        setTrainerName(data.trainer);
+        setTrainerVideo({
+          url: data.video_url,
+          title: data.title,
+          trainer: data.trainer,
+        });
       }
     };
 
@@ -93,6 +103,7 @@ export default function WeeklyExerciseSection({
   }, [activeTab, memberId, registrationDate, currentWeek]);
 
   const handleComplete = async () => {
+    if (!video?.url) return;
     setLoading(true);
     const todayStr = new Date().toISOString().split("T")[0];
 
@@ -102,8 +113,8 @@ export default function WeeklyExerciseSection({
       week: currentWeek,
       is_completed: true,
       type: activeTab,
-      workout_notes: title,
-      video_url: videoUrl,
+      workout_notes: video.title,
+      video_url: video.url,
     });
 
     if (activeTab === "weekly") {
@@ -125,7 +136,7 @@ export default function WeeklyExerciseSection({
 
     if (!logError) {
       setIsCompleted(true);
-      if (refetch) await refetch(); // ✅ 보호된 호출
+      if (refetch) await refetch();
     } else {
       console.error("운동 저장 실패:", logError.message);
     }
@@ -160,19 +171,19 @@ export default function WeeklyExerciseSection({
         </button>
       </div>
 
-      {videoUrl ? (
+      {video?.url ? (
         <>
           <div className="aspect-video rounded-lg overflow-hidden mb-3">
             <iframe
-              src={videoUrl}
+              src={video.url}
               className="w-full h-full"
               allow="autoplay; fullscreen"
               title="운동영상"
             ></iframe>
           </div>
-          <h3 className="font-medium mb-1">{title}</h3>
+          <h3 className="font-medium mb-1">{video.title}</h3>
           <p className="text-gray-600 text-sm mb-3">
-            {activeTab === "trainer" ? `${trainerName} 트레이너` : trainerName}
+            {activeTab === "trainer" ? `${video.trainer} 트레이너` : video.trainer}
           </p>
 
           {!isCompleted ? (

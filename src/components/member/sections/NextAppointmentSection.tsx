@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 
 interface Appointment {
   appointment_date: string;
@@ -16,25 +17,47 @@ export default function NextAppointmentSection({ memberId }: Props) {
   const [appointment, setAppointment] = useState<Appointment | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchNextAppointment = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("appointments")
+      .select("appointment_date, appointment_time, reason")
+      .eq("member_id", memberId)
+      .gte("appointment_date", new Date().toISOString().split("T")[0])
+      .order("appointment_date", { ascending: true })
+      .limit(1)
+      .single();
+
+    if (!error && data) {
+      setAppointment(data);
+    }
+    setLoading(false);
+  };
+
   useEffect(() => {
-    const fetchNextAppointment = async () => {
-      const { data, error } = await supabase
-        .from("appointments")
-        .select("appointment_date, appointment_time, reason")
-        .eq("member_id", memberId)
-        .gte("appointment_date", new Date().toISOString().split("T")[0])
-        .order("appointment_date", { ascending: true })
-        .limit(1)
-        .single();
+    if (!memberId) return;
+    fetchNextAppointment();
 
-      if (!error && data) {
-        setAppointment(data);
-      }
+    const channel: RealtimeChannel = supabase
+      .channel("appointments-updates")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "appointments",
+          filter: `member_id=eq.${memberId}`,
+        },
+        (payload) => {
+          // ✅ insert, update, delete 모두 반응
+          fetchNextAppointment();
+        }
+      )
+      .subscribe();
 
-      setLoading(false);
+    return () => {
+      supabase.removeChannel(channel);
     };
-
-    if (memberId) fetchNextAppointment();
   }, [memberId]);
 
   if (loading) return null;
@@ -49,8 +72,21 @@ export default function NextAppointmentSection({ memberId }: Props) {
           </div>
           <div>
             <h3 className="font-medium">
-              {formatDate(appointment.appointment_date)} {appointment.appointment_time}
+              {formatDate(appointment.appointment_date)} {formatTime(appointment.appointment_time)}
             </h3>
+            <p className={`text-sm font-semibold ${
+              getDaysUntil(appointment.appointment_date) === 0
+                ? "text-orange-500"
+                : getDaysUntil(appointment.appointment_date) > 0
+                ? "text-teal-600"
+                : "text-red-500"
+            }`}>
+              {getDaysUntil(appointment.appointment_date) === 0
+                ? "오늘 예약입니다!"
+                : getDaysUntil(appointment.appointment_date) > 0
+                ? `${getDaysUntil(appointment.appointment_date)}일 남음`
+                : "지난 예약입니다"}
+            </p>
             {appointment.reason && (
               <p className="text-sm text-gray-600">{appointment.reason}</p>
             )}
@@ -63,6 +99,7 @@ export default function NextAppointmentSection({ memberId }: Props) {
   );
 }
 
+// 기존 formatDate, formatTime, getDaysUntil 그대로 복사해서 아래 추가
 function formatDate(dateStr: string) {
   const date = new Date(dateStr);
   return date.toLocaleDateString("ko-KR", {
@@ -70,4 +107,17 @@ function formatDate(dateStr: string) {
     day: "numeric",
     weekday: "short",
   });
+}
+
+function formatTime(timeStr: string) {
+  const [h, m] = timeStr.split(":");
+  return `${h}:${m}`;
+}
+
+function getDaysUntil(dateStr: string) {
+  const today = new Date();
+  const target = new Date(dateStr);
+  today.setHours(0, 0, 0, 0);
+  target.setHours(0, 0, 0, 0);
+  return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
