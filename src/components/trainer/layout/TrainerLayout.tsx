@@ -1,7 +1,7 @@
-// src/layouts/TrainerLayout.tsx
+// src/components/trainer/layout/TrainerLayout.tsx
 
-import Header from "../../../components/trainer/layout/Header";
-import MemberScrollBar from "../../../components/trainer/layout/MemberScrollBar";
+import Header from "./Header";
+import MemberScrollBar from "./MemberScrollBar";
 import type { ReactNode } from "react";
 
 interface Member {
@@ -28,7 +28,7 @@ export default function TrainerLayout({
       {/* 고정 헤더 */}
       <Header />
 
-      {/* 헤더 아래 고정 멤버 선택 바 */}
+      {/* 회원 선택 스크롤 바 */}
       <div className="fixed top-[64px] z-20 w-full bg-white shadow-sm">
         <MemberScrollBar
           members={members}
@@ -37,8 +37,8 @@ export default function TrainerLayout({
         />
       </div>
 
-      {/* 아래 콘텐츠는 헤더 + 스크롤바 만큼 아래에서 시작 */}
-      <div className="pt-[160px] bg-gray-50 min-h-screen">
+      {/* 콘텐츠 영역: 헤더와 스크롤바 높이 고려해서 패딩 설정 */}
+      <div className="pt-[140px] bg-gray-50 min-h-screen">
         {children}
       </div>
     </>

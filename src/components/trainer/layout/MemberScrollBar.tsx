@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 
 interface Member {
   id: string;
@@ -22,6 +22,14 @@ export default function MemberScrollBar({ members, selectedId, onSelect }: Props
       m.phone_last4.includes(search.trim())
   );
 
+  // 선택 시 자동 스크롤
+  useEffect(() => {
+    const el = document.getElementById(`member-btn-${selectedId}`);
+    if (el && containerRef.current) {
+      el.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    }
+  }, [selectedId]);
+
   return (
     <div className="bg-white w-full shadow-sm z-10">
       {/* 검색창 */}
@@ -31,7 +39,7 @@ export default function MemberScrollBar({ members, selectedId, onSelect }: Props
           placeholder="이름 또는 뒷자리 검색"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="border rounded-full px-4 py-1 w-full text-sm focus:outline-none focus:ring-2 focus:ring-[#6C4CF1] bg-gray-50"
+          className="border rounded-full px-4 py-1 w-full text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50"
         />
         {search && (
           <button
@@ -45,10 +53,10 @@ export default function MemberScrollBar({ members, selectedId, onSelect }: Props
         )}
       </div>
 
-      {/* 멤버 스크롤바 */}
+      {/* 슬라이드 영역 */}
       <div
         ref={containerRef}
-        className="flex overflow-x-auto px-4 py-1 gap-2 scrollbar-hide"
+        className="flex overflow-x-auto px-4 py-2 gap-2 scrollbar-hide snap-x snap-mandatory touch-pan-x"
       >
         {filtered.length === 0 ? (
           <span className="text-sm text-gray-400 px-4 py-2">검색 결과 없음</span>
@@ -56,23 +64,15 @@ export default function MemberScrollBar({ members, selectedId, onSelect }: Props
           filtered.map((member) => (
             <button
               key={member.id}
-              onClick={() => {
-                onSelect(member.id);
-                const el = document.getElementById(`member-${member.id}`);
-                el?.scrollIntoView({
-                  behavior: "smooth",
-                  block: "start",
-                  inline: "center",
-                });
-              }}
-              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap flex items-center gap-2 transition
+              id={`member-btn-${member.id}`}
+              onClick={() => onSelect(member.id)}
+              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition snap-center
                 ${
                   selectedId === member.id
-                    ? "bg-[#6C4CF1] text-white"
+                    ? "bg-indigo-600 text-white"
                     : "bg-gray-100 text-gray-800 hover:bg-gray-200"
                 }`}
             >
-              <i className="fas fa-user-circle"></i>
               {member.name} ({member.phone_last4})
             </button>
           ))

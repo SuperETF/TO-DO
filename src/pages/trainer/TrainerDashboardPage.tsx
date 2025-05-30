@@ -1,45 +1,35 @@
+// src/pages/trainer-dashboard/TrainerDashboardPage.tsx
+
 import { useEffect, useState } from "react";
+import { supabase } from "../../lib/supabaseClient";
 import TrainerLayout from "../../components/trainer/layout/TrainerLayout";
 import TrainerDashboardContainer from "../../components/trainer/containers/TrainerDashboardContainer";
-import { supabase } from "../../lib/supabaseClient";
 
 interface Member {
   id: string;
   name: string;
   phone_last4: string;
+  created_at?: string;
+  trainer_id?: string;
 }
 
 export default function TrainerDashboardPage() {
-  const [trainerId, setTrainerId] = useState<string>("");
   const [members, setMembers] = useState<Member[]>([]);
   const [selectedId, setSelectedId] = useState<string>("");
 
   useEffect(() => {
-    const fetchSession = async () => {
-      const { data, error } = await supabase.auth.getSession();
-      if (error || !data.session) {
-        console.error("세션 없음: 로그인 필요");
-        return;
-      }
+    const fetchSessionAndMembers = async () => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const trainerId = sessionData.session?.user.id;
+      if (!trainerId) return;
 
-      const uid = data.session.user.id;
-      setTrainerId(uid);
-    };
-
-    fetchSession();
-  }, []);
-
-  useEffect(() => {
-    if (!trainerId) return;
-
-    const fetchMembers = async () => {
       const { data, error } = await supabase
         .from("members")
-        .select("id, name, phone_last4")
+        .select("*")
         .eq("trainer_id", trainerId);
 
       if (error) {
-        console.error("멤버 불러오기 실패:", error.message);
+        console.error("회원 조회 실패:", error.message);
         return;
       }
 
@@ -49,10 +39,12 @@ export default function TrainerDashboardPage() {
       }
     };
 
-    fetchMembers();
-  }, [trainerId]);
+    fetchSessionAndMembers();
+  }, []);
 
-  if (!selectedId) {
+  const selectedMember = members.find((m) => m.id === selectedId);
+
+  if (!selectedMember) {
     return <p className="text-center py-10 text-sm text-gray-500">회원 정보를 불러오는 중입니다...</p>;
   }
 
@@ -62,7 +54,7 @@ export default function TrainerDashboardPage() {
       selectedId={selectedId}
       onSelect={setSelectedId}
     >
-      <TrainerDashboardContainer selectedMemberId={selectedId} />
+      <TrainerDashboardContainer member={selectedMember} />
     </TrainerLayout>
   );
 }
