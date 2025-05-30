@@ -25,14 +25,21 @@ export default function CenterAnnouncementSection() {
   if (!announcement) return null;
 
   return (
-    <div className="bg-gradient-to-r from-teal-500 to-teal-600 rounded-xl p-4 mb-6">
+    <button
+      className="w-full bg-gradient-to-r from-teal-500 to-teal-600 rounded-xl p-4 mb-6 text-left focus:outline-none hover:brightness-105 transition"
+      onClick={() => {
+        if (announcement.link_url) {
+          window.open(announcement.link_url, "_blank");
+        }
+      }}
+    >
       <div className="flex items-center justify-between">
         <div className="flex-1">
           <h3 className="text-white font-medium mb-1">{announcement.title}</h3>
           <p className="text-white text-sm opacity-90">{announcement.content}</p>
         </div>
-        <i className="fas fa-chevron-right text-white opacity-70"></i>
+        <i className="fas fa-chevron-right text-white opacity-70 ml-4"></i>
       </div>
-    </div>
+    </button>
   );
 }

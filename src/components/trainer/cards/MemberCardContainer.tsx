@@ -37,10 +37,10 @@ export default function MemberCardContainer({ member }: Props) {
 
   return (
     <div
-      id={`member-${member.id}`}
-      className="rounded-xl bg-white shadow-lg overflow-y-auto h-full touch-pan-y scrollbar-none mt-12" // <-- 여기!
-      style={{ overscrollBehaviorY: "contain" }}
-    >
+  id={`member-${member.id}`}
+  className="rounded-xl bg-white shadow-lg overflow-y-auto h-full touch-pan-y scrollbar-none mt-4 mb-8"
+  style={{ overscrollBehaviorY: "contain" }}
+>
       <div className="bg-gradient-to-r from-[#6C4CF1] to-[#A083F7] text-white p-4">
         <h2 className="text-lg font-bold">{member.name}</h2>
         <p className="text-sm">회원번호 {member.phone_last4}</p>

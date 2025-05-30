@@ -16,7 +16,6 @@ export default function MemberScrollBar({ members, selectedId, onSelect }: Props
   const containerRef = useRef<HTMLDivElement>(null);
   const [search, setSearch] = useState("");
 
-  // 필터링된 멤버
   const filtered = members.filter(
     (m) =>
       m.name.toLowerCase().includes(search.trim().toLowerCase()) ||
@@ -26,7 +25,7 @@ export default function MemberScrollBar({ members, selectedId, onSelect }: Props
   return (
     <div className="bg-white w-full shadow-sm z-10">
       {/* 검색창 */}
-      <div className="px-4 pt-2 flex items-center gap-2">
+      <div className="px-4 flex items-center gap-2">
         <input
           type="text"
           placeholder="이름 또는 뒷자리 검색"
@@ -45,10 +44,11 @@ export default function MemberScrollBar({ members, selectedId, onSelect }: Props
           </button>
         )}
       </div>
+
       {/* 멤버 스크롤바 */}
       <div
         ref={containerRef}
-        className="flex overflow-x-auto px-4 py-2 gap-2 scrollbar-hide"
+        className="flex overflow-x-auto px-4 py-1 gap-2 scrollbar-hide"
       >
         {filtered.length === 0 ? (
           <span className="text-sm text-gray-400 px-4 py-2">검색 결과 없음</span>
