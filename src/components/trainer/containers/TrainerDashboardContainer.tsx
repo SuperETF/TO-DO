@@ -4,12 +4,21 @@ import MemberCard from "../cards/MemberCardContainer";
 import Header from "../layout/Header";
 import MemberScrollBar from "../layout/MemberScrollBar";
 
-export default function TrainerDashboardContainer() {
-  const [members, setMembers] = useState<any[]>([]);
-  const [selectedMemberId, setSelectedMemberId] = useState<string>("");
+interface Member {
+  id: string;
+  name: string;
+  phone_last4: string;
+  trainer_id: string;
+}
+
+interface Props {
+  selectedMemberId: string;
+}
+
+export default function TrainerDashboardContainer({ selectedMemberId }: Props) {
+  const [members, setMembers] = useState<Member[]>([]);
   const [showMemberRegistrationModal, setShowMemberRegistrationModal] = useState(false);
 
-  // 회원 등록 폼 상태
   const [newMemberName, setNewMemberName] = useState("");
   const [newMemberPhoneLast4, setNewMemberPhoneLast4] = useState("");
   const [registerError, setRegisterError] = useState("");
@@ -17,13 +26,27 @@ export default function TrainerDashboardContainer() {
 
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
+  // 선택된 멤버 id는 외부에서 props로 받기 때문에 내부 상태로 따로 유지하지 않음
+  const selectedId = selectedMemberId;
+
   useEffect(() => {
     fetchMembers();
   }, []);
 
+  useEffect(() => {
+    // 선택된 멤버 위치로 스크롤
+    const el = document.getElementById(`member-${selectedId}`);
+    if (el) {
+      setTimeout(() => {
+        el.scrollIntoView({ behavior: "auto", inline: "center" });
+      }, 300);
+    }
+  }, [selectedId]);
+
   const fetchMembers = async () => {
     const trainerId = localStorage.getItem("trainer_id");
     if (!trainerId) return;
+
     const { data, error } = await supabase
       .from("members")
       .select("*")
@@ -35,32 +58,25 @@ export default function TrainerDashboardContainer() {
     }
 
     setMembers(data);
-    if (data.length > 0) {
-      setSelectedMemberId(data[0].id);
-      setTimeout(() => {
-        const el = document.getElementById(`member-${data[0].id}`);
-        el?.scrollIntoView({ behavior: "auto", inline: "center" });
-      }, 300);
-    }
   };
 
   const handleSelectMember = (id: string) => {
-    setSelectedMemberId(id);
     const el = document.getElementById(`member-${id}`);
     el?.scrollIntoView({ behavior: "smooth", inline: "center" });
   };
 
-  // 회원 등록 함수
   const handleRegisterMember = async () => {
     setRegisterError("");
     if (!newMemberName || !newMemberPhoneLast4) {
       setRegisterError("이름과 휴대폰 뒷자리 4자리를 모두 입력하세요.");
       return;
     }
+
     if (!/^\d{4}$/.test(newMemberPhoneLast4)) {
       setRegisterError("휴대폰 뒷자리 4자리는 숫자 4자리여야 합니다.");
       return;
     }
+
     setIsRegistering(true);
     try {
       const trainerId = localStorage.getItem("trainer_id");
@@ -79,7 +95,7 @@ export default function TrainerDashboardContainer() {
         setNewMemberPhoneLast4("");
         await fetchMembers();
       }
-    } catch (err) {
+    } catch {
       setRegisterError("알 수 없는 오류가 발생했습니다.");
     }
     setIsRegistering(false);
@@ -88,16 +104,15 @@ export default function TrainerDashboardContainer() {
   return (
     <div className="bg-gray-50 min-h-screen">
       <Header />
-      {/* 상단 MemberScrollBar */}
+
       <div className="fixed top-16 w-full z-30 bg-white shadow-sm">
         <MemberScrollBar
           members={members}
-          selectedId={selectedMemberId}
+          selectedId={selectedId}
           onSelect={handleSelectMember}
         />
       </div>
 
-      {/* 상단 여백: pt-[7rem] (헤더+멤버바 높이 합산) */}
       <main className="pt-[7rem] pb-24">
         <div className="max-w-screen-md sm:max-w-screen-lg mx-auto px-4">
           <div
@@ -105,7 +120,7 @@ export default function TrainerDashboardContainer() {
             className="overflow-x-auto snap-x snap-mandatory touch-pan-x scrollbar-none"
             style={{
               WebkitOverflowScrolling: "touch",
-              height: "calc(100vh - 9rem)" // 필요에 따라 여백 조정
+              height: "calc(100vh - 9rem)"
             }}
           >
             <div className="flex gap-4 items-stretch h-full">
@@ -123,16 +138,14 @@ export default function TrainerDashboardContainer() {
         </div>
       </main>
 
-      {/* 플로팅 회원 등록 버튼 */}
       <button
         onClick={() => setShowMemberRegistrationModal(true)}
         className="fixed right-4 bottom-24 bg-indigo-600 text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center hover:bg-indigo-700 transition z-20"
         aria-label="새 회원 등록"
       >
-        <i className="fas fa-user-plus text-2xl"></i>
+        <i className="fas fa-user-plus text-2xl" />
       </button>
 
-      {/* 회원 등록 모달 */}
       {showMemberRegistrationModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center">
           <div className="bg-white p-6 rounded-lg max-w-md w-full">
