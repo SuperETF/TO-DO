@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import TrainerLayout from "../../components/trainer/layout/TrainerLayout";
 import TrainerDashboardContainer from "../../components/trainer/containers/TrainerDashboardContainer";
 import { supabase } from "../../lib/supabaseClient";
-import { useSession } from "@supabase/auth-helpers-react";
 
 interface Member {
   id: string;
@@ -11,11 +10,24 @@ interface Member {
 }
 
 export default function TrainerDashboardPage() {
-  const session = useSession();
-  const trainerId = session?.user?.id ?? "";
-
+  const [trainerId, setTrainerId] = useState<string>("");
   const [members, setMembers] = useState<Member[]>([]);
   const [selectedId, setSelectedId] = useState<string>("");
+
+  useEffect(() => {
+    const fetchSession = async () => {
+      const { data, error } = await supabase.auth.getSession();
+      if (error || !data.session) {
+        console.error("세션 없음: 로그인 필요");
+        return;
+      }
+
+      const uid = data.session.user.id;
+      setTrainerId(uid);
+    };
+
+    fetchSession();
+  }, []);
 
   useEffect(() => {
     if (!trainerId) return;
@@ -33,7 +45,7 @@ export default function TrainerDashboardPage() {
 
       if (data && data.length > 0) {
         setMembers(data);
-        setSelectedId(data[0].id); // 첫 번째 멤버 자동 선택
+        setSelectedId(data[0].id);
       }
     };
 
