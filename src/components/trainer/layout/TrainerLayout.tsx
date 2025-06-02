@@ -1,7 +1,8 @@
-// src/components/trainer/layout/TrainerLayout.tsx
-
 import Header from "./Header";
 import MemberScrollBar from "./MemberScrollBar";
+import BottomNav from "./BottomNav";
+import SegmentOverviewSection from "../sections/SegmentOverviewSection";
+import { useState } from "react";
 import type { ReactNode } from "react";
 
 interface Member {
@@ -23,24 +24,38 @@ export default function TrainerLayout({
   selectedId,
   onSelect,
 }: TrainerLayoutProps) {
+  const [activeTab, setActiveTab] = useState(() => {
+    return localStorage.getItem("activeTab") || "members";
+  });
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    localStorage.setItem("activeTab", tab);
+  };
+
   return (
-    <>
-      {/* 고정 헤더 */}
+    <div className="relative min-h-screen bg-gray-50 pb-[72px]">
       <Header />
 
-      {/* 회원 선택 스크롤 바 */}
-      <div className="fixed top-[64px] z-20 w-full bg-white shadow-sm">
-        <MemberScrollBar
-          members={members}
-          selectedId={selectedId}
-          onSelect={onSelect}
-        />
+      {activeTab !== "crm" && (
+        <div className="fixed top-[64px] z-20 w-full bg-white shadow-sm">
+          <MemberScrollBar
+            members={members}
+            selectedId={selectedId}
+            onSelect={onSelect}
+          />
+        </div>
+      )}
+
+      <div className={`${activeTab === "crm" ? "pt-[72px]" : "pt-[140px]"} px-4`}>
+        {activeTab === "members" && children}
+        {activeTab === "crm" && <SegmentOverviewSection />}
+        {activeTab === "schedule" && <div>일정 섹션</div>}
+        {activeTab === "stats" && <div>통계 섹션</div>}
+        {activeTab === "settings" && <div>설정 섹션</div>}
       </div>
 
-      {/* 콘텐츠 영역: 헤더와 스크롤바 높이 고려해서 패딩 설정 */}
-      <div className="pt-[140px] bg-gray-50 min-h-screen">
-        {children}
-      </div>
-    </>
+      <BottomNav activeTab={activeTab} setActiveTab={handleTabChange} />
+    </div>
   );
 }
