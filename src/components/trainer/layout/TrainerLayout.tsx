@@ -1,9 +1,11 @@
 import Header from "./Header";
 import MemberScrollBar from "./MemberScrollBar";
 import BottomNav from "./BottomNav";
+import MemberRegisterModal from "../sections/MemberRegisterModal";
 import SegmentOverviewSection from "../sections/SegmentOverviewSection";
 import { useState } from "react";
 import type { ReactNode } from "react";
+import { useSession } from "@supabase/auth-helpers-react";
 
 interface Member {
   id: string;
@@ -16,6 +18,7 @@ interface TrainerLayoutProps {
   members: Member[];
   selectedId: string;
   onSelect: (id: string) => void;
+  refetchMembers?: () => void; // 회원 등록 후 갱신용 (필요시)
 }
 
 export default function TrainerLayout({
@@ -23,14 +26,24 @@ export default function TrainerLayout({
   members,
   selectedId,
   onSelect,
+  refetchMembers,
 }: TrainerLayoutProps) {
   const [activeTab, setActiveTab] = useState(() => {
     return localStorage.getItem("activeTab") || "members";
   });
 
+  const [modalOpen, setModalOpen] = useState(false);
+  const session = useSession();
+  const trainerId = session?.user?.id ?? "";
+
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
     localStorage.setItem("activeTab", tab);
+  };
+
+  const handleRegisterSuccess = () => {
+    // 등록 성공 시 회원 목록 갱신
+    refetchMembers && refetchMembers();
   };
 
   return (
@@ -52,10 +65,22 @@ export default function TrainerLayout({
         {activeTab === "crm" && <SegmentOverviewSection />}
         {activeTab === "schedule" && <div>일정 섹션</div>}
         {activeTab === "stats" && <div>통계 섹션</div>}
-        {activeTab === "settings" && <div>설정 섹션</div>}
       </div>
 
-      <BottomNav activeTab={activeTab} setActiveTab={handleTabChange} />
+      {/* 하단 네비게이션 – 회원 등록 버튼 추가 */}
+      <BottomNav
+        activeTab={activeTab}
+        setActiveTab={handleTabChange}
+        onOpenRegister={() => setModalOpen(true)}
+      />
+
+      {/* 회원 등록 모달 */}
+      <MemberRegisterModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        trainerId={trainerId}
+        onSuccess={handleRegisterSuccess}
+      />
     </div>
   );
 }

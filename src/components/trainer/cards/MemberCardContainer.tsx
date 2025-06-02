@@ -89,7 +89,7 @@ export default function MemberCardContainer({ member }: Props) {
         </AccordionItem>
 
         <AccordionItem title="추천 운동 입력" isOpen={activeSection === "recommend"} onToggle={() => toggleSection("recommend")}>
-          <TrainerRecommendationInputSection memberId={member.id} trainerName="이호진" />
+          <TrainerRecommendationInputSection memberId={member.id} />
         </AccordionItem>
       </div>
 
