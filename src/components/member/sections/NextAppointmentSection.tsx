@@ -11,9 +11,10 @@ interface Appointment {
 
 interface Props {
   memberId: string;
+  readOnly?: boolean;
 }
 
-export default function NextAppointmentSection({ memberId }: Props) {
+export default function NextAppointmentSection({ memberId, readOnly = false }: Props) {
   const [personal, setPersonal] = useState<Appointment | null>(null);
   const [lesson, setLesson] = useState<Appointment | null>(null);
   const [loading, setLoading] = useState(true);
@@ -38,24 +39,25 @@ export default function NextAppointmentSection({ memberId }: Props) {
   };
 
   const handleCreateAppointment = async () => {
+    if (readOnly) return;
     if (!newDate || !newTime) return alert("날짜와 시간을 입력해주세요.");
-  
+
     const correctedTime = newTime.length === 5 ? `${newTime}:00` : newTime;
-  
+
     await supabase
       .from("appointments")
       .delete()
       .eq("member_id", memberId)
       .eq("type", "personal");
-  
+
     const { error } = await supabase.from("appointments").insert({
       member_id: memberId,
       appointment_date: newDate,
-      appointment_time: correctedTime, // ✅ 여기가 핵심
+      appointment_time: correctedTime,
       reason: "개인 운동",
       type: "personal",
     });
-  
+
     if (error) {
       alert("예약 실패: " + error.message);
     } else {
@@ -68,6 +70,7 @@ export default function NextAppointmentSection({ memberId }: Props) {
   };
 
   const handleCancel = async () => {
+    if (readOnly) return;
     if (!personal?.id) return;
     if (!confirm("정말 예약을 취소하시겠습니까?")) return;
 
@@ -126,17 +129,19 @@ export default function NextAppointmentSection({ memberId }: Props) {
         <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-medium text-gray-800">개인 운동</h3>
-            <div className="flex items-center gap-2">
-              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                예약완료
-              </span>
-              <button
-                onClick={handleCancel}
-                className="text-xs text-red-500 underline"
-              >
-                예약 취소
-              </button>
-            </div>
+            {!readOnly && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                  예약완료
+                </span>
+                <button
+                  onClick={handleCancel}
+                  className="text-xs text-red-500 underline"
+                >
+                  예약 취소
+                </button>
+              </div>
+            )}
           </div>
           <div className="flex items-center">
             <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center text-purple-500 mr-3">
@@ -144,8 +149,7 @@ export default function NextAppointmentSection({ memberId }: Props) {
             </div>
             <div className="flex-1">
               <h3 className="font-medium">
-                {formatDate(personal.appointment_date)}{" "}
-                {formatTime(personal.appointment_time)}
+                {formatDate(personal.appointment_date)} {formatTime(personal.appointment_time)}
               </h3>
               <p className="text-sm text-gray-600">{personal.reason}</p>
             </div>
@@ -153,14 +157,16 @@ export default function NextAppointmentSection({ memberId }: Props) {
         </div>
       )}
 
-      <button
-        className="w-full bg-teal-500 text-white py-3 rounded-lg font-medium mt-2"
-        onClick={() => setShowModal(true)}
-      >
-        <i className="fas fa-plus mr-2"></i>새로운 예약하기
-      </button>
+      {!readOnly && (
+        <button
+          className="w-full bg-teal-500 text-white py-3 rounded-lg font-medium mt-2"
+          onClick={() => setShowModal(true)}
+        >
+          <i className="fas fa-plus mr-2"></i>새로운 예약하기
+        </button>
+      )}
 
-      {showModal && (
+      {showModal && !readOnly && (
         <div className="fixed inset-0 z-40 bg-black bg-opacity-40 flex items-center justify-center">
           <div className="bg-white rounded-xl p-6 w-full max-w-sm shadow-lg max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-semibold mb-4">개인 운동 예약</h3>
@@ -247,8 +253,7 @@ function AppointmentCard({
         </div>
         <div>
           <h3 className="font-medium">
-            {formatDate(appointment.appointment_date)}{" "}
-            {formatTime(appointment.appointment_time)}
+            {formatDate(appointment.appointment_date)} {formatTime(appointment.appointment_time)}
           </h3>
           <p className="text-sm text-gray-600">{appointment.reason}</p>
         </div>

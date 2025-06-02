@@ -2,14 +2,16 @@ import { useAchievement } from "../../../hooks/useAchievement";
 
 interface Props {
   memberId: string;
-  level: number;
-  percent: number;
-  missionCount: number;
-  workoutCount: number;
-  routineCount: number;
+  level?: number;
+  percent?: number;
+  missionCount?: number;
+  workoutCount?: number;
+  routineCount?: number;
+  readOnly?: boolean; // ✅ readOnly prop 추가
 }
 
-export default function LevelBadgeSection({ memberId }: Props) {
+export default function LevelBadgeSection({ memberId, readOnly = false }: Props) {
+  void readOnly; 
   const {
     missionCount,
     workoutCount,

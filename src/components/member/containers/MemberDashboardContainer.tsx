@@ -14,26 +14,34 @@ import WorkoutHistorySection from "../sections/WorkoutHistorySection";
 import CenterAnnouncementSection from "../sections/CenterAnnouncementSection";
 import CenterInfoCardSection from "../sections/CenterInfoCardSection";
 import { useAchievement } from "../../../hooks/useAchievement";
+import { useSearchParams } from "react-router-dom";
 
-export default function MemberDashboardContainer() {
+interface Props {
+  memberId?: string;
+  readOnly?: boolean;
+}
+
+export default function MemberDashboardContainer({ memberId, readOnly = false }: Props) {
   const [member, setMember] = useState<any>(null);
+  const [params] = useSearchParams();
+  const memberIdFromStorage = localStorage.getItem("member_id");
 
   useEffect(() => {
     const fetchMember = async () => {
-      const memberId = localStorage.getItem("member_id");
-      if (!memberId) return;
+      const id = memberId ?? params.get("memberId") ?? memberIdFromStorage;
+      if (!id) return;
 
       const { data, error } = await supabase
         .from("members")
         .select("*")
-        .eq("id", memberId)
+        .eq("id", id)
         .single();
 
       if (!error && data) setMember(data);
     };
 
     fetchMember();
-  }, []);
+  }, [memberId]);
 
   const achievement = useAchievement(member?.id);
 
@@ -50,36 +58,40 @@ export default function MemberDashboardContainer() {
 
         <div className="space-y-6">
           {/* ✅ 상단 고정 공지 섹션 */}
-          <CenterAnnouncementSection />
-          <CenterInfoCardSection />
+          <CenterAnnouncementSection readOnly={readOnly} />
+          <CenterInfoCardSection readOnly={readOnly} />
 
           {/* ✅ 이번 주 운동부터 기존 섹션들 */}
           <WeeklyExerciseSection
             memberId={member.id}
             registrationDate={member.created_at}
             refetch={achievement.refetch}
+            readOnly={readOnly}
           />
           <WeeklyRoutineTrackerSection
             memberId={member.id}
             refetch={achievement.refetch}
+            readOnly={readOnly}
           />
           <MonthlyMissionSection
             memberId={member.id}
             refetch={achievement.refetch}
+            readOnly={readOnly}
           />
           <LevelBadgeSection
             memberId={member.id}
             {...achievement}
+            readOnly={readOnly}
           />
-          <NextAppointmentSection memberId={member.id} />
-          <TrainerCommentSection memberId={member.id} />
-          <PainScoreChartSection memberId={member.id} />
-          <BodyCompositionChartSection memberId={member.id} />
-          <WorkoutHistorySection memberId={member.id} />
+          <NextAppointmentSection memberId={member.id} readOnly={readOnly} />
+          <TrainerCommentSection memberId={member.id} readOnly={readOnly} />
+          <PainScoreChartSection memberId={member.id} readOnly={readOnly} />
+          <BodyCompositionChartSection memberId={member.id} readOnly={readOnly} />
+          <WorkoutHistorySection memberId={member.id} readOnly={readOnly} />
         </div>
       </main>
 
-      <TabBar />
+      {!readOnly && <TabBar />}
     </div>
   );
 }

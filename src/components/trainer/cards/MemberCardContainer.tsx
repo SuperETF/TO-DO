@@ -1,5 +1,3 @@
-// src/components/trainer/cards/MemberCardContainer.tsx
-
 import { useRef, useState } from "react";
 import ConditionSection from "../sections/ConditionSection";
 import WorkoutSection from "../sections/WorkoutSection";
@@ -45,13 +43,26 @@ export default function MemberCardContainer({ member }: Props) {
     >
       {/* 헤더 */}
       <div className="bg-gradient-to-r from-[#6C4CF1] to-[#A083F7] text-white p-4 rounded-t-xl">
-        <h2 className="text-lg font-bold">{member.name}</h2>
-        <p className="text-sm">전화번호 뒷자리: {member.phone_last4}</p>
-        {member.created_at && (
-          <p className="text-xs text-white/80 mt-1">
-            가입일: {new Date(member.created_at).toLocaleDateString("ko-KR")}
-          </p>
-        )}
+        <div className="flex justify-between items-start">
+          <div>
+            <h2 className="text-lg font-bold">{member.name}</h2>
+            <p className="text-sm">전화번호 뒷자리: {member.phone_last4}</p>
+            {member.created_at && (
+              <p className="text-xs text-white/80 mt-1">
+                가입일: {new Date(member.created_at).toLocaleDateString("ko-KR")}
+              </p>
+            )}
+          </div>
+          <button
+            onClick={() =>
+              window.open(`/trainer-dashboard/members/${member.id}?readonly=true`, "_blank")
+            }
+            className="bg-white bg-opacity-20 hover:bg-opacity-30 transition px-3 py-1.5 rounded-lg text-sm flex items-center space-x-1 backdrop-blur-sm"
+          >
+            <i className="fas fa-external-link-alt text-xs"></i>
+            <span>대시보드 확인</span>
+          </button>
+        </div>
       </div>
 
       {/* 아코디언 섹션들 */}

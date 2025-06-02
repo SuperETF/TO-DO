@@ -4,9 +4,10 @@ import { supabase } from "../../../lib/supabaseClient";
 
 interface Props {
   memberId: string;
+  readOnly?: boolean; // ✅ readOnly prop 추가
 }
 
-export default function BodyCompositionChartSection({ memberId }: Props) {
+export default function BodyCompositionChartSection({ memberId, readOnly = false }: Props) {
   const chartRef = useRef<HTMLDivElement>(null);
   const [latest, setLatest] = useState<{
     weight: number;
@@ -29,7 +30,6 @@ export default function BodyCompositionChartSection({ memberId }: Props) {
       const muscle = data.map((d) => d.muscle_mass ?? 0);
       const fat = data.map((d) => d.body_fat_percent ?? 0);
 
-      // ✅ 최신 측정값 저장
       const last = data[data.length - 1];
       setLatest({
         weight: last?.weight ?? 0,
@@ -128,7 +128,10 @@ export default function BodyCompositionChartSection({ memberId }: Props) {
         </div>
       )}
 
-      <div ref={chartRef} className="w-full h-64" />
+      {!readOnly && <div ref={chartRef} className="w-full h-64" />}
+      {readOnly && (
+        <div className="text-sm text-gray-400">차트는 회원 화면에서만 확인 가능합니다.</div>
+      )}
     </section>
   );
 }

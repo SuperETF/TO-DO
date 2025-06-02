@@ -4,9 +4,11 @@ import { supabase } from "../../../lib/supabaseClient";
 
 interface Props {
   memberId: string;
+  readOnly?: boolean;
 }
 
-export default function PainScoreChartSection({ memberId }: Props) {
+export default function PainScoreChartSection({ memberId, readOnly = false }: Props) {
+  void readOnly;
   const chartRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -21,7 +23,7 @@ export default function PainScoreChartSection({ memberId }: Props) {
         .select("date, pain_score, pain_area")
         .eq("member_id", memberId)
         .order("date", { ascending: true })
-        .limit(50); // 최대 50개
+        .limit(50);
 
       if (error) {
         console.error("❌ Supabase error:", error);
@@ -33,12 +35,18 @@ export default function PainScoreChartSection({ memberId }: Props) {
         return;
       }
 
-      const dates = Array.from(new Set(data.map((d) => d.date))).sort();
+      // 날짜 + 부위 조합을 x축으로 구성
+      const labels = data.map((d) => `${d.date} (${d.pain_area})`);
+      const xAxisLabels = Array.from(new Set(labels)).sort();
+
       const areas = Array.from(new Set(data.map((d) => d.pain_area)));
 
       const series = areas.map((area) => {
-        const areaScores = dates.map((date) => {
-          const entry = data.find((d) => d.date === date && d.pain_area === area);
+        const areaScores = xAxisLabels.map((label) => {
+          const [] = label.split(" (");
+          const entry = data.find(
+            (d) => `${d.date} (${d.pain_area})` === label && d.pain_area === area
+          );
           return entry ? entry.pain_score ?? 0 : 0;
         });
 
@@ -58,14 +66,32 @@ export default function PainScoreChartSection({ memberId }: Props) {
         echarts.init(chartRef.current!);
 
       chart.setOption({
-        tooltip: { trigger: "axis" },
-        legend: { data: areas, top: 0 },
-        grid: { top: 40, right: 20, bottom: 30, left: 40 },
+        tooltip: {
+          trigger: "axis",
+          axisPointer: { type: "shadow" },
+        },
+        legend: {
+          data: areas,
+          top: 0,
+        },
+        grid: {
+          top: 40,
+          right: 20,
+          bottom: 50,
+          left: 40,
+        },
         xAxis: {
           type: "category",
-          data: dates,
+          data: xAxisLabels,
+          axisLabel: {
+            color: "#666",
+            rotate: 30, // 보기 좋게 회전
+            formatter: (label: string) => {
+              const [date, area] = label.split(" (");
+              return `${date}\n(${area?.replace(")", "")})`;
+            },
+          },
           axisLine: { lineStyle: { color: "#ddd" } },
-          axisLabel: { color: "#666" },
         },
         yAxis: {
           type: "value",
