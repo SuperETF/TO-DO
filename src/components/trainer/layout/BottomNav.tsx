@@ -1,5 +1,3 @@
-import { useState } from "react";
-
 interface BottomNavProps {
   activeTab: string;
   setActiveTab: (tabId: string) => void;

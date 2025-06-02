@@ -3,9 +3,9 @@ import MemberScrollBar from "./MemberScrollBar";
 import BottomNav from "./BottomNav";
 import MemberRegisterModal from "../sections/MemberRegisterModal";
 import SegmentOverviewSection from "../sections/SegmentOverviewSection";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { useSession } from "@supabase/auth-helpers-react";
+import { supabase } from "../../../lib/supabaseClient"; // 세션 싱크용 직접 호출
 
 interface Member {
   id: string;
@@ -18,7 +18,7 @@ interface TrainerLayoutProps {
   members: Member[];
   selectedId: string;
   onSelect: (id: string) => void;
-  refetchMembers?: () => void; // 회원 등록 후 갱신용 (필요시)
+  refetchMembers?: () => void;
 }
 
 export default function TrainerLayout({
@@ -33,16 +33,35 @@ export default function TrainerLayout({
   });
 
   const [modalOpen, setModalOpen] = useState(false);
-  const session = useSession();
-  const trainerId = session?.user?.id ?? "";
+
+  // supabase SDK로 직접 세션/트레이너 ID 추출
+  const [trainerId, setTrainerId] = useState<string | null>(null);
+  const [loadingSession, setLoadingSession] = useState(true);
+
+  useEffect(() => {
+    const fetchTrainerId = async () => {
+      setLoadingSession(true);
+      const { data: sessionData } = await supabase.auth.getSession();
+      setTrainerId(sessionData.session?.user.id ?? null);
+      setLoadingSession(false);
+    };
+    fetchTrainerId();
+  }, []);
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
     localStorage.setItem("activeTab", tab);
   };
 
+  const handleOpenRegister = () => {
+    if (!trainerId) {
+      alert("세션 정보를 불러올 수 없습니다. 새로고침 또는 재로그인 해주세요.");
+      return;
+    }
+    setModalOpen(true);
+  };
+
   const handleRegisterSuccess = () => {
-    // 등록 성공 시 회원 목록 갱신
     refetchMembers && refetchMembers();
   };
 
@@ -67,18 +86,18 @@ export default function TrainerLayout({
         {activeTab === "stats" && <div>통계 섹션</div>}
       </div>
 
-      {/* 하단 네비게이션 – 회원 등록 버튼 추가 */}
+      {/* 하단 네비게이션 – 회원 등록 버튼은 세션 준비 후만 활성화 */}
       <BottomNav
         activeTab={activeTab}
         setActiveTab={handleTabChange}
-        onOpenRegister={() => setModalOpen(true)}
+        onOpenRegister={loadingSession ? () => {} : handleOpenRegister}
       />
 
       {/* 회원 등록 모달 */}
       <MemberRegisterModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        trainerId={trainerId}
+        trainerId={trainerId || undefined}
         onSuccess={handleRegisterSuccess}
       />
     </div>

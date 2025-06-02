@@ -27,7 +27,6 @@ export default function WeeklyExerciseSection({
 }: WeeklyExerciseSectionProps) {
   const [activeTab, setActiveTab] = useState<"weekly" | "trainer">("weekly");
   const [weeklyVideo, setWeeklyVideo] = useState<{ url: string; title: string; trainer: string } | null>(null);
-  const [trainerVideo, setTrainerVideo] = useState<{ url: string; title: string; trainer: string } | null>(null);
   const [trainerVideos, setTrainerVideos] = useState<MemberRecommendation[]>([]);
   const [isCompleted, setIsCompleted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -36,7 +35,6 @@ export default function WeeklyExerciseSection({
 
   const playerRef = useRef<HTMLIFrameElement>(null);
   const currentWeek = getCurrentWeekSince(registrationDate);
-  const video = activeTab === "weekly" ? weeklyVideo : trainerVideo;
 
   const watchIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedTimeRef = useRef<number>(0);
@@ -45,19 +43,18 @@ export default function WeeklyExerciseSection({
   const targetThreshold = useRef<number>(0);
   const isPlayingRef = useRef<boolean>(false);
 
-  // 주차별 운동 영상 (기존 코드 유지)
   useEffect(() => {
-    if (!video?.url || !playerRef.current || activeTab !== "weekly") return;
+    if (!weeklyVideo?.url || !playerRef.current || activeTab !== "weekly") return;
 
     const player = new Player(playerRef.current);
-    const localKey = `watchedSeconds-${memberId}-${video.url}`;
+    const localKey = `watchedSeconds-${memberId}-${weeklyVideo.url}`;
 
     (async () => {
       const { data } = await supabase
         .from("watch_progress_logs")
         .select("seconds")
         .eq("member_id", memberId)
-        .eq("video_url", video.url)
+        .eq("video_url", weeklyVideo.url)
         .maybeSingle();
 
       if (data?.seconds) {
@@ -98,7 +95,7 @@ export default function WeeklyExerciseSection({
             [
               {
                 member_id: memberId,
-                video_url: video.url,
+                video_url: weeklyVideo.url,
                 seconds: currentTime,
                 updated_at: new Date().toISOString(),
               },
@@ -122,31 +119,24 @@ export default function WeeklyExerciseSection({
       player.destroy();
       if (watchIntervalRef.current) clearInterval(watchIntervalRef.current);
     };
-  }, [video?.url, activeTab, memberId]);
+  }, [weeklyVideo?.url, activeTab, memberId]);
 
   useEffect(() => {
-    const checkCompleted = async () => {
-      if (!video?.url) return;
-
-      let query = supabase
-        .from("workout_logs")
-        .select("video_url")
-        .eq("member_id", memberId)
-        .eq("type", activeTab)
-        .eq("is_completed", true);
-
-      if (activeTab === "weekly") {
-        query = query.eq("week", currentWeek);
-      } else {
-        query = query.eq("video_url", video.url);
-      }
-
-      const { data } = await query.maybeSingle();
-      setIsCompleted(data?.video_url === video.url);
-    };
-
-    checkCompleted();
-  }, [memberId, currentWeek, activeTab, video?.url]);
+    if (activeTab === "weekly" && weeklyVideo?.url) {
+      const checkCompleted = async () => {
+        const { data } = await supabase
+          .from("workout_logs")
+          .select("video_url")
+          .eq("member_id", memberId)
+          .eq("type", "weekly")
+          .eq("week", currentWeek)
+          .eq("is_completed", true)
+          .maybeSingle();
+        setIsCompleted(data?.video_url === weeklyVideo.url);
+      };
+      checkCompleted();
+    }
+  }, [memberId, currentWeek, activeTab, weeklyVideo?.url]);
 
   useEffect(() => {
     const fetchWeeklyVideo = async () => {
@@ -181,31 +171,13 @@ export default function WeeklyExerciseSection({
       }
     };
 
-    // 기존 트레이너 단일 영상: 필요시 유지, 미사용이면 삭제 가능
-    // const fetchTrainerVideo = async () => {
-    //   const { data } = await supabase
-    //     .from("trainer_recommendations")
-    //     .select("video_url, title, trainer")
-    //     .eq("member_id", memberId)
-    //     .maybeSingle();
-    //   if (data?.video_url) {
-    //     setTrainerVideo({
-    //       url: data.video_url,
-    //       title: data.title,
-    //       trainer: data.trainer,
-    //     });
-    //   }
-    // };
-
     if (activeTab === "weekly") fetchWeeklyVideo();
-    // else fetchTrainerVideo();
   }, [activeTab, memberId, registrationDate, currentWeek]);
 
-  // 트레이너 추천 여러 개 fetch
   useEffect(() => {
     if (activeTab !== "trainer") return;
     const fetchTrainerVideos = async () => {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("member_recommendations")
         .select("id, assigned_at, is_completed, exercise_videos(title, video_url, category, tags)")
         .eq("member_id", memberId)
@@ -216,7 +188,7 @@ export default function WeeklyExerciseSection({
   }, [activeTab, memberId]);
 
   const handleComplete = async () => {
-    if (!video?.url) return;
+    if (activeTab === "weekly" && !weeklyVideo?.url) return;
 
     if (!canComplete) {
       alert("아직 영상을 30% 이상 실제로 시청하지 않았습니다.");
@@ -232,8 +204,8 @@ export default function WeeklyExerciseSection({
       week: currentWeek,
       is_completed: true,
       type: activeTab,
-      workout_notes: video.title,
-      video_url: video.url,
+      workout_notes: weeklyVideo?.title ?? "",
+      video_url: weeklyVideo?.url ?? "",
     });
 
     if (activeTab === "weekly") {
@@ -289,7 +261,7 @@ export default function WeeklyExerciseSection({
         </button>
       </div>
 
-      {/* 주차별 운동: 기존 코드 그대로 */}
+      {/* weekly 탭 */}
       {activeTab === "weekly" && (
         <>
           {weeklyVideo?.url ? (
@@ -325,7 +297,7 @@ export default function WeeklyExerciseSection({
                 </button>
               ) : (
                 <div className="w-full bg-gray-200 text-gray-600 py-2 rounded-lg text-center font-medium">
-                  고생하셨습니다🔥
+                  고생하셔요🔥
                 </div>
               )}
             </>
@@ -335,18 +307,16 @@ export default function WeeklyExerciseSection({
         </>
       )}
 
-      {/* 트레이너 추천: 여러 개 카드형 리스트 */}
+      {/* trainer 탭 */}
       {activeTab === "trainer" && (
         trainerVideos.length === 0 ? (
           <div className="text-sm text-gray-400">아직 추천된 영상이 없습니다.</div>
         ) : (
           <div className="space-y-4">
-            {trainerVideos.map(rec => (
+            {trainerVideos.map((rec) => (
               <div key={rec.id} className="bg-gray-50 rounded-lg p-3">
                 <div className="flex justify-between items-center mb-2">
-                  <h4 className="text-sm font-medium">
-                    {rec.exercise_videos.title}
-                  </h4>
+                  <h4 className="text-sm font-medium">{rec.exercise_videos.title}</h4>
                   <span className="text-xs text-gray-500">
                     {rec.exercise_videos.category && `#${rec.exercise_videos.category}`}
                   </span>
