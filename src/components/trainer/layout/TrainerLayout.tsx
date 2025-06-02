@@ -66,40 +66,40 @@ export default function TrainerLayout({
   };
 
   return (
-    <div className="relative min-h-screen bg-gray-50 pb-[72px]">
-      <Header />
+    <div className="relative min-h-screen bg-gray-50 pb-[72px] px-4">
+      <div className="max-w-screen-lg mx-auto relative">
+        <Header />
 
-      {activeTab !== "crm" && (
-        <div className="fixed top-[64px] z-20 w-full bg-white shadow-sm">
-          <MemberScrollBar
-            members={members}
-            selectedId={selectedId}
-            onSelect={onSelect}
-          />
+        {activeTab !== "crm" && (
+  <div className="fixed top-[64px] left-1/2 -translate-x-1/2 z-20 w-full max-w-screen-lg bg-white shadow-sm">
+    <MemberScrollBar
+      members={members}
+      selectedId={selectedId}
+      onSelect={onSelect}
+    />
+  </div>
+)}
+
+        <div className={`${activeTab === "crm" ? "pt-[72px]" : "pt-[140px]"}`}>
+          {activeTab === "members" && children}
+          {activeTab === "crm" && <SegmentOverviewSection />}
+          {activeTab === "schedule" && <div>일정 섹션</div>}
+          {activeTab === "stats" && <div>통계 섹션</div>}
         </div>
-      )}
 
-      <div className={`${activeTab === "crm" ? "pt-[72px]" : "pt-[140px]"} px-4`}>
-        {activeTab === "members" && children}
-        {activeTab === "crm" && <SegmentOverviewSection />}
-        {activeTab === "schedule" && <div>일정 섹션</div>}
-        {activeTab === "stats" && <div>통계 섹션</div>}
+        <BottomNav
+          activeTab={activeTab}
+          setActiveTab={handleTabChange}
+          onOpenRegister={loadingSession ? () => {} : handleOpenRegister}
+        />
+
+        <MemberRegisterModal
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          trainerId={trainerId || undefined}
+          onSuccess={handleRegisterSuccess}
+        />
       </div>
-
-      {/* 하단 네비게이션 – 회원 등록 버튼은 세션 준비 후만 활성화 */}
-      <BottomNav
-        activeTab={activeTab}
-        setActiveTab={handleTabChange}
-        onOpenRegister={loadingSession ? () => {} : handleOpenRegister}
-      />
-
-      {/* 회원 등록 모달 */}
-      <MemberRegisterModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        trainerId={trainerId || undefined}
-        onSuccess={handleRegisterSuccess}
-      />
     </div>
   );
 }
