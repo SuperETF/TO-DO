@@ -24,7 +24,6 @@ export default function WeeklyRoutineTrackerSection({
   const [routines, setRoutines] = useState<RoutineLog[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // 주간 루틴 데이터 가져오기
   const fetchRoutine = async () => {
     setLoading(true);
     const today = new Date();
@@ -57,7 +56,6 @@ export default function WeeklyRoutineTrackerSection({
     const existing = routines.find((r) => r.day === day);
 
     if (existing) {
-      // 이미 row가 있으면 상태 반전 (체크 → 해제 or 해제 → 체크)
       const newCompleted = !existing.completed;
       const { error } = await supabase
         .from("routine_logs")
@@ -72,9 +70,9 @@ export default function WeeklyRoutineTrackerSection({
           )
         );
         if (refetch) await refetch();
+        await updateAchievement(memberId);
       }
     } else {
-      // 없으면 체크(추가)
       const newLog = {
         member_id: memberId,
         date: isoDate,
@@ -83,15 +81,46 @@ export default function WeeklyRoutineTrackerSection({
         completed: true,
       };
 
-      const { error } = await supabase
-        .from("routine_logs")
-        .insert([newLog]);
+      const { error } = await supabase.from("routine_logs").insert([newLog]);
 
       if (!error) {
         setRoutines((prev) => [...prev, newLog]);
         if (refetch) await refetch();
+        await updateAchievement(memberId);
       }
     }
+  };
+
+  const updateAchievement = async (memberId: string) => {
+    const { data: missions } = await supabase
+      .from("mission_logs")
+      .select("id")
+      .eq("member_id", memberId)
+      .eq("is_completed", true);
+
+    const { data: workouts } = await supabase
+      .from("workout_logs")
+      .select("id")
+      .eq("member_id", memberId)
+      .eq("is_completed", true);
+
+    const { data: routines } = await supabase
+      .from("routine_logs")
+      .select("id")
+      .eq("member_id", memberId)
+      .eq("completed", true);
+
+    const m = missions?.length ?? 0;
+    const w = workouts?.length ?? 0;
+    const r = routines?.length ?? 0;
+
+    const newLevel = Math.floor((m + w + r) / 5) + 1;
+    const newScore = m * 10 + w * 20 + r * 5;
+
+    await supabase
+      .from("members")
+      .update({ level: newLevel, score: newScore })
+      .eq("id", memberId);
   };
 
   return (

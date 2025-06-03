@@ -88,29 +88,41 @@ export default function NextAppointmentSection({ memberId }: Props) {
   const handleComplete = async () => {
     if (!personal) return;
 
-    const date = personal.appointment_date;
-    const day = (new Date(date).getDay() + 6) % 7;
-    const weekId = `${new Date().getFullYear()}-W${String(getISOWeek(new Date())).padStart(2, "0")}`;
+    const now = new Date();
+    const todayStr = now.toISOString().split("T")[0];
+    const currentTime = now.toTimeString().slice(0, 5);
 
-    await supabase
-      .from("routine_logs")
-      .upsert({
-        member_id: memberId,
-        date,
-        day,
-        week_id: weekId,
-        completed: true,
-      }, { onConflict: "member_id,date" });
+    const reservedDate = personal.appointment_date;
+    const reservedTime = personal.appointment_time.slice(0, 5);
+
+    if (reservedDate !== todayStr) {
+      alert("🚫 오늘 날짜의 예약만 완료할 수 있습니다.");
+      return;
+    }
+
+    if (currentTime < reservedTime) {
+      alert("⏰ 예약 시간 이후에만 완료할 수 있습니다.");
+      return;
+    }
+
+    const workoutDate = new Date(reservedDate);
+    const day = (workoutDate.getDay() + 6) % 7;
+    const weekId = `${workoutDate.getFullYear()}-W${String(getISOWeek(workoutDate)).padStart(2, "0")}`;
+
+    await supabase.from("routine_logs").upsert({
+      member_id: memberId,
+      date: reservedDate,
+      day,
+      week_id: weekId,
+      completed: true,
+    }, { onConflict: "member_id,date" });
 
     await supabase.rpc("increment_score", {
       member_id_input: memberId,
       point: 15,
     });
 
-    await supabase
-      .from("appointments")
-      .delete()
-      .eq("id", personal.id);
+    await supabase.from("appointments").delete().eq("id", personal.id);
 
     alert("운동 완료! 점수 +15점");
     fetchAppointments();
