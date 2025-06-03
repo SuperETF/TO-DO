@@ -9,6 +9,7 @@ export function useAchievement(memberId: string) {
   const [routineCount, setRoutineCount] = useState(0);
   const [level, setLevel] = useState(1);
   const [percent, setPercent] = useState(0);
+  const [score, setScore] = useState(0);
 
   const fetchData = useCallback(async () => {
     if (!memberId) return;
@@ -39,20 +40,28 @@ export function useAchievement(memberId: string) {
     const m = missions?.length || 0;
     const w = workouts?.length || 0;
     const r = routines?.length || 0;
-    const total = m + w + r;
-    const newLevel = Math.floor(total / 5) + 1;
-    const newPercent = (total % 5) * 20;
+
+    const totalCount = m + w + r;
+    const newLevel = Math.floor(totalCount / 5) + 1;
+    const newPercent = (totalCount % 5) * 20;
+    const newScore = m * 10 + w * 20 + r * 5;
 
     setMissionCount(m);
     setWorkoutCount(w);
     setRoutineCount(r);
     setLevel(newLevel);
     setPercent(newPercent);
+    setScore(newScore);
+
+    // ✅ members 테이블에 반영
+    await supabase
+      .from("members")
+      .update({ level: newLevel, score: newScore })
+      .eq("id", memberId);
 
     await checkAndRewardLevel(newLevel);
   }, [memberId]);
 
-  // 레벨 10, 20, 30... 도달 시 월별 리워드 지급
   const checkAndRewardLevel = useCallback(async (newLevel: number) => {
     if (!memberId || newLevel < 10 || newLevel % 10 !== 0) return;
 
@@ -84,12 +93,10 @@ export function useAchievement(memberId: string) {
     }
   }, [memberId]);
 
-  // 최초 mount 및 memberId 변경 시 fetchData
   useEffect(() => {
     if (memberId) fetchData();
   }, [memberId, fetchData]);
 
-  // 실시간 변경 감지
   useEffect(() => {
     if (!memberId) return;
 
@@ -127,6 +134,7 @@ export function useAchievement(memberId: string) {
     routineCount,
     level,
     percent,
+    score,
     refetch: fetchData,
   };
 }

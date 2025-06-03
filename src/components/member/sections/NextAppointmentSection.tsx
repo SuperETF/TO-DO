@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
+import { getISOWeek } from "date-fns";
 
 interface Appointment {
   id: string;
@@ -7,6 +8,7 @@ interface Appointment {
   appointment_time: string;
   reason: string;
   type: "personal" | "lesson";
+  completed?: boolean;
 }
 
 interface Props {
@@ -25,7 +27,7 @@ export default function NextAppointmentSection({ memberId }: Props) {
     setLoading(true);
     const { data, error } = await supabase
       .from("appointments")
-      .select("id, appointment_date, appointment_time, reason, type")
+      .select("id, appointment_date, appointment_time, reason, type, is_completed")
       .eq("member_id", memberId)
       .order("appointment_date", { ascending: true });
 
@@ -39,23 +41,22 @@ export default function NextAppointmentSection({ memberId }: Props) {
 
   const handleCreateAppointment = async () => {
     if (!newDate || !newTime) return alert("날짜와 시간을 입력해주세요.");
-  
     const correctedTime = newTime.length === 5 ? `${newTime}:00` : newTime;
-  
+
     await supabase
       .from("appointments")
       .delete()
       .eq("member_id", memberId)
       .eq("type", "personal");
-  
+
     const { error } = await supabase.from("appointments").insert({
       member_id: memberId,
       appointment_date: newDate,
-      appointment_time: correctedTime, // ✅ 여기가 핵심
+      appointment_time: correctedTime,
       reason: "개인 운동",
       type: "personal",
     });
-  
+
     if (error) {
       alert("예약 실패: " + error.message);
     } else {
@@ -82,6 +83,37 @@ export default function NextAppointmentSection({ memberId }: Props) {
       alert("예약이 취소되었습니다.");
       fetchAppointments();
     }
+  };
+
+  const handleComplete = async () => {
+    if (!personal) return;
+
+    const date = personal.appointment_date;
+    const day = (new Date(date).getDay() + 6) % 7;
+    const weekId = `${new Date().getFullYear()}-W${String(getISOWeek(new Date())).padStart(2, "0")}`;
+
+    await supabase
+      .from("routine_logs")
+      .upsert({
+        member_id: memberId,
+        date,
+        day,
+        week_id: weekId,
+        completed: true,
+      }, { onConflict: "member_id,date" });
+
+    await supabase.rpc("increment_score", {
+      member_id_input: memberId,
+      point: 15,
+    });
+
+    await supabase
+      .from("appointments")
+      .delete()
+      .eq("id", personal.id);
+
+    alert("운동 완료! 점수 +15점");
+    fetchAppointments();
   };
 
   useEffect(() => {
@@ -130,6 +162,12 @@ export default function NextAppointmentSection({ memberId }: Props) {
               <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
                 예약완료
               </span>
+              <button
+                onClick={handleComplete}
+                className="text-xs text-green-600 underline"
+              >
+                운동 완료
+              </button>
               <button
                 onClick={handleCancel}
                 className="text-xs text-red-500 underline"

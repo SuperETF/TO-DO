@@ -14,6 +14,7 @@ import WorkoutHistorySection from "../sections/WorkoutHistorySection";
 import CenterAnnouncementSection from "../sections/CenterAnnouncementSection";
 import CenterInfoCardSection from "../sections/CenterInfoCardSection";
 import { useAchievement } from "../../../hooks/useAchievement";
+import MemberRankingSection from "../sections/MemberRankingSection";
 
 interface Props {
   memberId: string;
@@ -73,6 +74,7 @@ export default function MemberDashboardContainer({ memberId }: Props) {
             memberId={member.id}
             {...achievement}
           />
+          <MemberRankingSection memberId={memberId} />
           <NextAppointmentSection memberId={member.id} />
           <TrainerCommentSection memberId={member.id} />
           <PainScoreChartSection memberId={member.id} />
