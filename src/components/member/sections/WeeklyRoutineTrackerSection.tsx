@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 import { getISOWeek } from "date-fns";
-import React from "react";
 
 export interface WeeklyRoutineTrackerSectionProps {
   memberId: string;
