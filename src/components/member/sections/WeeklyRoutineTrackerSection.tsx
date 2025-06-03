@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 import { getISOWeek } from "date-fns";
+import React from "react";
 
 export interface WeeklyRoutineTrackerSectionProps {
   memberId: string;
   refetch?: () => Promise<void>;
-  readOnly?: boolean;
 }
 
 interface RoutineLog {
@@ -21,7 +21,6 @@ function getWeekId(date: Date) {
 export default function WeeklyRoutineTrackerSection({
   memberId,
   refetch,
-  readOnly = false,
 }: WeeklyRoutineTrackerSectionProps) {
   const [routines, setRoutines] = useState<RoutineLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,8 +49,6 @@ export default function WeeklyRoutineTrackerSection({
   }, [memberId]);
 
   const toggleDay = async (day: number) => {
-    if (readOnly) return;
-
     const today = new Date();
     const weekId = getWeekId(today);
     const base = new Date(today);
@@ -121,7 +118,7 @@ export default function WeeklyRoutineTrackerSection({
                     completed
                       ? "bg-teal-500 border-teal-500 text-white"
                       : "border-gray-300 text-gray-400"
-                  } ${readOnly ? "cursor-default opacity-60" : ""}`}
+                  }`}
                 >
                   {completed && <i className="fas fa-check" />}
                 </div>

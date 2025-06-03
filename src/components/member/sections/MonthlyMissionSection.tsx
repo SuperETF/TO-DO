@@ -4,7 +4,6 @@ import { supabase } from "../../../lib/supabaseClient";
 export interface MonthlyMissionSectionProps {
   memberId: string;
   refetch?: () => Promise<void>;
-  readOnly?: boolean; // ✅ 추가
 }
 
 interface MissionLog {
@@ -16,7 +15,6 @@ interface MissionLog {
 export default function MonthlyMissionSection({
   memberId,
   refetch,
-  readOnly = false,
 }: MonthlyMissionSectionProps) {
   const [missions, setMissions] = useState<MissionLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,6 +36,7 @@ export default function MonthlyMissionSection({
         is_completed: l.is_completed,
         title: l.monthly_missions?.title ?? "",
       }));
+
       setMissions(formatted);
     } else {
       setMissions([]);
@@ -52,11 +51,10 @@ export default function MonthlyMissionSection({
 
   const completedCount = missions.filter((m) => m.is_completed).length;
   const total = missions.length;
+  // 총 미션 개수가 0일 때 0%로 처리
   const percent = total === 0 ? 0 : Math.round((completedCount / total) * 100);
 
   const handleComplete = async (missionId: string) => {
-    if (readOnly) return; // ✅ readOnly인 경우 실행 방지
-
     const { error } = await supabase
       .from("mission_logs")
       .update({ is_completed: true })
@@ -72,6 +70,7 @@ export default function MonthlyMissionSection({
     }
   };
 
+  // 최대 3개까지 미완료 미션 노출
   const visible = missions.filter((m) => !m.is_completed).slice(0, 3);
 
   return (
@@ -96,15 +95,13 @@ export default function MonthlyMissionSection({
           <div key={mission.mission_id} className="mb-4">
             <div className="flex justify-between mb-1">
               <span className="text-sm font-medium text-gray-800">{mission.title}</span>
-              {!readOnly && (
-                <button
-                  className="text-sm text-indigo-600 hover:underline disabled:text-gray-300"
-                  onClick={() => handleComplete(mission.mission_id)}
-                  disabled={mission.is_completed}
-                >
-                  완료하기
-                </button>
-              )}
+              <button
+                className="text-sm text-indigo-600 hover:underline disabled:text-gray-300"
+                onClick={() => handleComplete(mission.mission_id)}
+                disabled={mission.is_completed}
+              >
+                완료하기
+              </button>
             </div>
           </div>
         ))

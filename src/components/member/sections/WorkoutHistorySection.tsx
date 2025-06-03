@@ -3,7 +3,6 @@ import { supabase } from "../../../lib/supabaseClient";
 
 interface Props {
   memberId: string;
-  readOnly?: boolean;
 }
 
 interface WorkoutLog {
@@ -14,8 +13,7 @@ interface WorkoutLog {
   is_completed: boolean | null;
 }
 
-export default function WorkoutHistorySection({ memberId, readOnly = false }: Props) {
-  void readOnly; 
+export default function WorkoutHistorySection({ memberId }: Props) {
   const [logs, setLogs] = useState<WorkoutLog[]>([]);
   const [loading, setLoading] = useState(true);
 

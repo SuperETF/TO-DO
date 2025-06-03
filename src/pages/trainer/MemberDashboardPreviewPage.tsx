@@ -1,14 +1,20 @@
-// pages/trainer/MemberDashboardReadOnlyPage.tsx
+// src/pages/trainer/MemberDashboardPreviewPage.tsx
 
-import MemberDashboardContainer from "../../components/member/containers/MemberDashboardContainer";
 import { useParams } from "react-router-dom";
+import MemberDashboardContainer from "../../components/member/containers/MemberDashboardContainer";
+import TrainerLayout from "../../components/trainer/layout/TrainerLayout";
 
-export default function MemberDashboardReadOnlyPage() {
-  const { memberId } = useParams<{ memberId: string }>();
-
-  if (!memberId) return <p>잘못된 접근입니다.</p>;
-
-  return (
-    <MemberDashboardContainer memberId={memberId} readOnly={true} />
-  );
-}
+export default function MemberDashboardPreviewPage() {
+    const { memberId } = useParams();
+  
+    return (
+      <TrainerLayout
+        members={[]}
+        selectedId={memberId ?? ""} // 또는 as string
+        onSelect={() => {}}
+      >
+        <MemberDashboardContainer memberId={memberId} readOnly />
+      </TrainerLayout>
+    );
+  }
+  

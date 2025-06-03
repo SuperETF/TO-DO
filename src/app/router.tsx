@@ -12,6 +12,7 @@ const Router = () => {
         <Route path="/" element={<LoginPage />} />
         <Route path="/member-dashboard" element={<MemberDashboardPage />} />
         <Route path="/trainer-dashboard" element={<TrainerDashboardPage />} />
+        <Route path="/member-dashboard/:memberId" element={<MemberDashboardPage />} /> {/* ✅ 추가 */}
         <Route
           path="*"
           element={

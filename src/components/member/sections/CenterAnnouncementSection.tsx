@@ -1,11 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 
-interface Props {
-  readOnly?: boolean;
-}
-
-export default function CenterAnnouncementSection({ readOnly = false }: Props) {
+export default function CenterAnnouncementSection() {
   const [announcement, setAnnouncement] = useState<any>(null);
 
   useEffect(() => {
@@ -30,13 +26,12 @@ export default function CenterAnnouncementSection({ readOnly = false }: Props) {
 
   return (
     <button
-      className="w-full bg-gradient-to-r from-teal-500 to-teal-600 rounded-xl p-4 mb-6 text-left focus:outline-none hover:brightness-105 transition disabled:opacity-70"
+      className="w-full bg-gradient-to-r from-teal-500 to-teal-600 rounded-xl p-4 mb-6 text-left focus:outline-none hover:brightness-105 transition"
       onClick={() => {
-        if (!readOnly && announcement.link_url) {
+        if (announcement.link_url) {
           window.open(announcement.link_url, "_blank");
         }
       }}
-      disabled={readOnly}
     >
       <div className="flex items-center justify-between">
         <div className="flex-1">

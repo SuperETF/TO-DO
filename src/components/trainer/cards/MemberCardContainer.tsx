@@ -1,3 +1,5 @@
+// src/components/trainer/cards/MemberCardContainer.tsx
+
 import { useRef, useState } from "react";
 import ConditionSection from "../sections/ConditionSection";
 import WorkoutSection from "../sections/WorkoutSection";
@@ -43,27 +45,28 @@ export default function MemberCardContainer({ member }: Props) {
     >
       {/* 헤더 */}
       <div className="bg-gradient-to-r from-[#6C4CF1] to-[#A083F7] text-white p-4 rounded-t-xl">
-        <div className="flex justify-between items-start">
-          <div>
-            <h2 className="text-lg font-bold">{member.name}</h2>
-            <p className="text-sm">전화번호 뒷자리: {member.phone_last4}</p>
-            {member.created_at && (
-              <p className="text-xs text-white/80 mt-1">
-                가입일: {new Date(member.created_at).toLocaleDateString("ko-KR")}
-              </p>
-            )}
-          </div>
-          <button
-            onClick={() =>
-              window.open(`/trainer-dashboard/members/${member.id}?readonly=true`, "_blank")
-            }
-            className="bg-white bg-opacity-20 hover:bg-opacity-30 transition px-3 py-1.5 rounded-lg text-sm flex items-center space-x-1 backdrop-blur-sm"
-          >
-            <i className="fas fa-external-link-alt text-xs"></i>
-            <span>대시보드 확인</span>
-          </button>
-        </div>
-      </div>
+  <div className="flex justify-between items-start">
+    {/* 좌측: 회원 정보 */}
+    <div>
+      <h2 className="text-lg font-bold">{member.name}</h2>
+      <p className="text-sm">전화번호 뒷자리: {member.phone_last4}</p>
+      {member.created_at && (
+        <p className="text-xs text-white/80 mt-1">
+          가입일: {new Date(member.created_at).toLocaleDateString("ko-KR")}
+        </p>
+      )}
+    </div>
+
+    {/* 우측: 대시보드 확인 버튼 */}
+    <button
+      onClick={() => window.open(`/member-dashboard/${member.id}`, "_blank")}
+      className="flex items-center space-x-1 px-3 py-1.5 rounded-md text-sm bg-white/20 text-white hover:bg-white/30 transition-all backdrop-blur-md shadow-sm"
+    >
+      <i className="fas fa-external-link-alt text-xs"></i>
+      <span className="font-medium">대시보드 확인</span>
+    </button>
+  </div>
+</div>
 
       {/* 아코디언 섹션들 */}
       <div className="space-y-4 p-4">

@@ -3,7 +3,6 @@ import { supabase } from "../../../lib/supabaseClient";
 
 interface Props {
   memberId: string;
-  readOnly?: boolean; // ✅ 추가
 }
 
 interface Note {
@@ -12,8 +11,7 @@ interface Note {
   trainer_name?: string;
 }
 
-export default function TrainerCommentSection({ memberId, readOnly = false }: Props) {
-  void readOnly; 
+export default function TrainerCommentSection({ memberId }: Props) {
   const [note, setNote] = useState<Note | null>(null);
   const [loading, setLoading] = useState(true);
 

@@ -6,7 +6,6 @@ interface WeeklyExerciseSectionProps {
   memberId: string;
   registrationDate: string;
   refetch?: () => Promise<void>;
-  readOnly?: boolean;
 }
 
 interface MemberRecommendation {
@@ -25,7 +24,6 @@ export default function WeeklyExerciseSection({
   memberId,
   registrationDate,
   refetch,
-  readOnly = false,
 }: WeeklyExerciseSectionProps) {
   const [activeTab, setActiveTab] = useState<"weekly" | "trainer">("weekly");
   const [weeklyVideo, setWeeklyVideo] = useState<{ url: string; title: string; trainer: string } | null>(null);
@@ -190,7 +188,6 @@ export default function WeeklyExerciseSection({
   }, [activeTab, memberId]);
 
   const handleComplete = async () => {
-    if (readOnly) return;
     if (activeTab === "weekly" && !weeklyVideo?.url) return;
 
     if (!canComplete) {
@@ -264,6 +261,7 @@ export default function WeeklyExerciseSection({
         </button>
       </div>
 
+      {/* weekly 탭 */}
       {activeTab === "weekly" && (
         <>
           {weeklyVideo?.url ? (
@@ -288,17 +286,15 @@ export default function WeeklyExerciseSection({
               <h3 className="font-medium mb-1">{weeklyVideo.title}</h3>
               <p className="text-gray-600 text-sm mb-3">{weeklyVideo.trainer}</p>
               {!isCompleted ? (
-                !readOnly && (
-                  <button
-                    onClick={handleComplete}
-                    disabled={loading}
-                    className={`w-full py-2 rounded-lg font-medium ${
-                      canComplete ? "bg-teal-500 text-white" : "bg-gray-300 text-gray-400"
-                    }`}
-                  >
-                    ✓ 운동 완료
-                  </button>
-                )
+                <button
+                  onClick={handleComplete}
+                  disabled={loading}
+                  className={`w-full py-2 rounded-lg font-medium ${
+                    canComplete ? "bg-teal-500 text-white" : "bg-gray-300 text-gray-400"
+                  }`}
+                >
+                  ✓ 운동 완료
+                </button>
               ) : (
                 <div className="w-full bg-gray-200 text-gray-600 py-2 rounded-lg text-center font-medium">
                   고생하셔요🔥
@@ -311,6 +307,7 @@ export default function WeeklyExerciseSection({
         </>
       )}
 
+      {/* trainer 탭 */}
       {activeTab === "trainer" && (
         trainerVideos.length === 0 ? (
           <div className="text-sm text-gray-400">아직 추천된 영상이 없습니다.</div>
