@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as echarts from "echarts";
 import { supabase } from "../../../lib/supabaseClient";
+import PainLogModal from "./PainLogModal";
 
 interface Props {
   memberId: string;
@@ -8,24 +9,17 @@ interface Props {
 }
 
 const defaultColors = [
-  "#3b82f6", // blue
-  "#34d399", // emerald
-  "#f97316", // orange
-  "#a855f7", // purple
-  "#f43f5e", // rose
-  "#10b981", // green
-  "#6366f1", // indigo
-  "#eab308", // yellow
+  "#3b82f6", "#34d399", "#f97316", "#a855f7",
+  "#f43f5e", "#10b981", "#6366f1", "#eab308",
 ];
 
-export default function PainScoreChartSection({ memberId, readOnly = false }: Props) {
-  void readOnly;
+export default function PainScoreChartSection({ memberId }: Props) {
   const chartRef = useRef<HTMLDivElement>(null);
   const [painData, setPainData] = useState<any[]>([]);
   const [areas, setAreas] = useState<string[]>([]);
   const [selectedArea, setSelectedArea] = useState<string>("");
+  const [showModal, setShowModal] = useState(false);
 
-  // 부위 → 색상 매핑
   const colorMap: Record<string, string> = {};
   areas.forEach((area, i) => {
     colorMap[area] = defaultColors[i % defaultColors.length];
@@ -36,7 +30,7 @@ export default function PainScoreChartSection({ memberId, readOnly = false }: Pr
       if (!memberId || typeof memberId !== "string" || memberId.length !== 36) return;
 
       const { data, error } = await supabase
-        .from("pain_logs")
+        .from("pain_logs") // 트레이너 기록
         .select("date, pain_score, pain_area")
         .eq("member_id", memberId)
         .order("date", { ascending: true });
@@ -75,19 +69,11 @@ export default function PainScoreChartSection({ memberId, readOnly = false }: Pr
         },
       },
       legend: { show: false },
-      grid: {
-        top: 40,
-        right: 20,
-        bottom: 50,
-        left: 40,
-      },
+      grid: { top: 40, right: 20, bottom: 50, left: 40 },
       xAxis: {
         type: "category",
         data: dates,
-        axisLabel: {
-          color: "#666",
-          rotate: 0,
-        },
+        axisLabel: { color: "#666" },
         axisLine: { lineStyle: { color: "#ddd" } },
       },
       yAxis: {
@@ -118,18 +104,22 @@ export default function PainScoreChartSection({ memberId, readOnly = false }: Pr
 
   return (
     <section className="bg-white rounded-xl shadow-sm p-4 mb-6">
-      <h2 className="text-lg font-semibold mb-3">통증 점수 추이</h2>
+      <div className="flex justify-between items-center mb-3">
+        <h2 className="text-lg font-semibold">통증 점수 추이</h2>
+        <button
+          onClick={() => setShowModal(true)}
+          className="text-sm text-teal-500 font-medium flex items-center cursor-pointer"
+        >
+          <i className="fas fa-plus mr-1"></i> 통증 기록하기
+        </button>
+      </div>
 
       <div className="flex gap-3 mb-4">
         {areas.map((area) => (
           <button
             key={area}
             onClick={() => setSelectedArea(area)}
-            className={`flex items-center gap-1 px-3 py-1 rounded-full border shadow-sm text-sm 
-              ${selectedArea === area
-                ? `bg-[${colorMap[area]}] text-white border-transparent`
-                : "bg-gray-100 text-gray-800 border-gray-300"
-              }`}
+            className={`flex items-center gap-1 px-3 py-1 rounded-full border shadow-sm text-sm`}
             style={{
               backgroundColor: selectedArea === area ? colorMap[area] : "#f3f4f6",
               borderColor: selectedArea === area ? colorMap[area] : "#d1d5db",
@@ -146,6 +136,13 @@ export default function PainScoreChartSection({ memberId, readOnly = false }: Pr
       </div>
 
       <div ref={chartRef} className="w-full h-64" />
+
+      {showModal && (
+        <PainLogModal
+          memberId={memberId}
+          onClose={() => setShowModal(false)}
+        />
+      )}
     </section>
   );
 }

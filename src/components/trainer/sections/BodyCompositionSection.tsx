@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "../../../lib/supabaseClient";
-import type { Database } from "../../../types/supabase";
+import type { Database } from "../../../types/supabase.ts";
 import * as echarts from "echarts";
 
 type BodyInsert = Database["public"]["Tables"]["body_compositions"]["Insert"];

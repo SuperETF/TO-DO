@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
-import type { Database } from "../../../types/supabase";
+import type { Database } from "../../../types/supabase.ts";
 
 type WorkoutInsert = Database["public"]["Tables"]["workouts"]["Insert"];
 type WorkoutRow = Database["public"]["Tables"]["workouts"]["Row"];
@@ -20,7 +20,6 @@ export default function WorkoutSection({ memberId, onSaved }: WorkoutSectionProp
   const [workouts, setWorkouts] = useState<WorkoutRow[]>([]);
   const toastTimeout = useRef<NodeJS.Timeout | null>(null);
 
-  // 운동 기록 패칭
   const fetchWorkouts = async () => {
     const { data, error } = await supabase
       .from("workouts")
@@ -36,7 +35,6 @@ export default function WorkoutSection({ memberId, onSaved }: WorkoutSectionProp
     if (memberId) fetchWorkouts();
   }, [memberId]);
 
-  // 토스트 메시지 중복 방지
   const showToast = (msg: string, type: "success" | "error" = "success") => {
     setToast(msg);
     setToastType(type);
@@ -55,7 +53,7 @@ export default function WorkoutSection({ memberId, onSaved }: WorkoutSectionProp
     const payload: WorkoutInsert = {
       member_id: memberId,
       title: content,
-      created_at: date,
+      date: date,
     };
 
     const finalPayload = editId ? { ...payload, id: editId } : payload;
@@ -77,7 +75,7 @@ export default function WorkoutSection({ memberId, onSaved }: WorkoutSectionProp
   };
 
   const handleEdit = (w: WorkoutRow) => {
-    setDate(w.created_at?.split("T")[0] ?? "");
+    setDate(w.date ?? "");
     setContent(w.title ?? "");
     setEditId(w.id);
   };
@@ -143,7 +141,7 @@ export default function WorkoutSection({ memberId, onSaved }: WorkoutSectionProp
             >
               <div className="flex flex-col">
                 <span className="text-xs text-gray-400">
-                  {w.created_at?.split("T")[0]}
+                  {w.date ?? "날짜 없음"}
                 </span>
                 <span>{w.title}</span>
               </div>

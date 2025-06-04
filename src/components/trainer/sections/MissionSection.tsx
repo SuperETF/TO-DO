@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
-import type { Database } from "../../../types/supabase";
+import type { Database } from "../../../types/supabase.ts";
 
 type Mission = Database["public"]["Tables"]["monthly_missions"]["Row"];
 type MissionLog = Database["public"]["Tables"]["mission_logs"]["Row"];

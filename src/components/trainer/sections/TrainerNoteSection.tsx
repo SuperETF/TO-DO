@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
-import type { Database } from "../../../types/supabase";
+import type { Database } from "../../../types/supabase.ts";
 
 type NoteInsert = Database["public"]["Tables"]["trainer_notes"]["Insert"];
 
