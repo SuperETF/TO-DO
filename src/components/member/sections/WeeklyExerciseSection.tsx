@@ -140,13 +140,14 @@ export default function WeeklyExerciseSection({
 
   useEffect(() => {
     const fetchWeeklyVideo = async () => {
+      // 1. 이미 완료된 운동이 있는지 먼저 확인
       const { data: assigned } = await supabase
         .from("assigned_workouts")
         .select("video_url, title, trainer")
         .eq("member_id", memberId)
         .eq("week", currentWeek)
         .maybeSingle();
-
+  
       if (assigned?.video_url) {
         setWeeklyVideo({
           url: assigned.video_url,
@@ -155,24 +156,26 @@ export default function WeeklyExerciseSection({
         });
         return;
       }
-
+  
+      // 2. 자동 추천 콘텐츠 적용 (recommended_workouts → 화면 렌더링만)
       const { data: recommended } = await supabase
         .from("recommended_workouts")
         .select("video_url, title")
         .eq("week", currentWeek)
         .maybeSingle();
-
+  
       if (recommended?.video_url) {
         setWeeklyVideo({
           url: recommended.video_url,
           title: recommended.title,
-          trainer: `${currentWeek}주차 운동`,
+          trainer: `${currentWeek}주차 추천 콘텐츠`,
         });
       }
     };
-
+  
     if (activeTab === "weekly") fetchWeeklyVideo();
   }, [activeTab, memberId, registrationDate, currentWeek]);
+  
 
   useEffect(() => {
     if (activeTab !== "trainer") return;
