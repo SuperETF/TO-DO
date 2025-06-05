@@ -18,13 +18,12 @@ export default function MemberRankingSection({ memberId }: Props) {
 
   useEffect(() => {
     const fetchRankings = async () => {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("members")
-        .select("id, name, level, score")
-        .order("score", { ascending: false })
-        .order("level", { ascending: false });
+        .select("id, name, score, level")
+        .order("score", { ascending: false });
 
-      if (data && !error) {
+      if (data) {
         setRankings(data);
         const index = data.findIndex((m) => m.id === memberId);
         if (index >= 0) setMyRank(index + 1);
