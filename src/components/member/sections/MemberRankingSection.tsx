@@ -19,32 +19,33 @@ export default function MemberRankingSection({ memberId }: Props) {
 
   useEffect(() => {
     const fetchRankings = async () => {
-      const { data, error } = await supabase
-        .from("members")
-        .select(`
-          id,
-          name,
-          score,
-          member_levels (
-            level,
-            percent
-          )
-        `)
+      const { data: levels, error: levelError } = await supabase
+        .from("member_levels")
+        .select("member_id, score, level, percent")
         .order("score", { ascending: false });
 
-      if (!data || error) {
-        console.error("Error loading rankings:", error);
+      const { data: members, error: memberError } = await supabase
+        .from("members")
+        .select("id, name");
+
+      if (levelError || memberError || !levels || !members) {
+        console.error("❌ 데이터 불러오기 실패", levelError || memberError);
         return;
       }
 
-      // member_levels는 중첩 객체이므로 펼쳐야 함
-      const enriched = data.map((m: any) => ({
-        id: m.id,
-        name: m.name,
-        score: m.score,
-        level: m.member_levels?.level || 1,
-        percent: m.member_levels?.percent || 0,
-      }));
+      const enriched: Member[] = levels
+        .map((l: any) => {
+          const found = members.find((m) => m.id === l.member_id);
+          if (!found || !found.name) return null; // 이름 없는 사용자 제거
+          return {
+            id: l.member_id,
+            name: found.name,
+            score: l.score,
+            level: l.level,
+            percent: Number(l.percent),
+          };
+        })
+        .filter((m): m is Member => m !== null);
 
       setRankings(enriched);
 
@@ -74,12 +75,10 @@ export default function MemberRankingSection({ memberId }: Props) {
         )}
       </div>
 
-      {/* Top 3 */}
       <div className="flex justify-between items-end mb-6 px-4">
         {[1, 0, 2].map((index, displayOrder) => {
           const member = top3[index];
           if (!member) return <div key={displayOrder} className="w-1/3" />;
-
           return (
             <div
               key={member.id}
@@ -110,7 +109,6 @@ export default function MemberRankingSection({ memberId }: Props) {
         })}
       </div>
 
-      {/* Others */}
       <div className="space-y-3">
         {others.map((member, idx) => (
           <div

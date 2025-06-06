@@ -29,6 +29,7 @@ export default function NextAppointmentSection({ memberId }: Props) {
       .from("appointments")
       .select("id, appointment_date, appointment_time, reason, type, is_completed")
       .eq("member_id", memberId)
+      .eq("is_completed", false) 
       .order("appointment_date", { ascending: true });
 
     if (!error && data) {
@@ -87,46 +88,68 @@ export default function NextAppointmentSection({ memberId }: Props) {
 
   const handleComplete = async () => {
     if (!personal) return;
-
+  
     const now = new Date();
     const todayStr = now.toISOString().split("T")[0];
     const currentTime = now.toTimeString().slice(0, 5);
-
+  
     const reservedDate = personal.appointment_date;
     const reservedTime = personal.appointment_time.slice(0, 5);
-
+  
     if (reservedDate !== todayStr) {
       alert("🚫 오늘 날짜의 예약만 완료할 수 있습니다.");
       return;
     }
-
+  
     if (currentTime < reservedTime) {
       alert("⏰ 예약 시간 이후에만 완료할 수 있습니다.");
       return;
     }
-
+  
     const workoutDate = new Date(reservedDate);
     const day = (workoutDate.getDay() + 6) % 7;
     const weekId = `${workoutDate.getFullYear()}-W${String(getISOWeek(workoutDate)).padStart(2, "0")}`;
-
-    await supabase.from("routine_logs").upsert({
+  
+    // ✅ 1. routine_logs 기록
+    const { error: routineError } = await supabase.from("routine_logs").upsert({
       member_id: memberId,
       date: reservedDate,
       day,
       week_id: weekId,
       completed: true,
     }, { onConflict: "member_id,date" });
-
-    await supabase.rpc("increment_score", {
+  
+    if (routineError) {
+      alert("루틴 기록 실패: " + routineError.message);
+      return;
+    }
+  
+    // ✅ 2. appointments.is_completed = true 로 상태 변경
+    const { error: completeError } = await supabase
+      .from("appointments")
+      .update({ is_completed: true })
+      .eq("id", personal.id);
+  
+    if (completeError) {
+      alert("운동 완료 처리 실패: " + completeError.message);
+      return;
+    }
+  
+    // ✅ 3. 점수 15점 증가
+    const { error: scoreError } = await supabase.rpc("increment_score", {
       member_id_input: memberId,
       point: 15,
     });
-
-    await supabase.from("appointments").delete().eq("id", personal.id);
-
+  
+    if (scoreError) {
+      alert("점수 반영 실패: " + scoreError.message);
+      return;
+    }
+  
     alert("운동 완료! 점수 +15점");
     fetchAppointments();
   };
+  
 
   useEffect(() => {
     if (!memberId) return;
