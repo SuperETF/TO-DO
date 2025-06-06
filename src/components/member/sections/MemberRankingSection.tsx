@@ -4,8 +4,9 @@ import { supabase } from "../../../lib/supabaseClient";
 interface Member {
   id: string;
   name: string;
-  level: number;
   score: number;
+  level: number;
+  percent: number;
 }
 
 interface Props {
@@ -18,16 +19,37 @@ export default function MemberRankingSection({ memberId }: Props) {
 
   useEffect(() => {
     const fetchRankings = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("members")
-        .select("id, name, score, level")
+        .select(`
+          id,
+          name,
+          score,
+          member_levels (
+            level,
+            percent
+          )
+        `)
         .order("score", { ascending: false });
 
-      if (data) {
-        setRankings(data);
-        const index = data.findIndex((m) => m.id === memberId);
-        if (index >= 0) setMyRank(index + 1);
+      if (!data || error) {
+        console.error("Error loading rankings:", error);
+        return;
       }
+
+      // member_levels는 중첩 객체이므로 펼쳐야 함
+      const enriched = data.map((m: any) => ({
+        id: m.id,
+        name: m.name,
+        score: m.score,
+        level: m.member_levels?.level || 1,
+        percent: m.member_levels?.percent || 0,
+      }));
+
+      setRankings(enriched);
+
+      const myIndex = enriched.findIndex((m) => m.id === memberId);
+      if (myIndex >= 0) setMyRank(myIndex + 1);
     };
 
     fetchRankings();
