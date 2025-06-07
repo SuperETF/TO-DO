@@ -260,7 +260,7 @@ function getCurrentWeekSince(startDate: string): number {
 // ✅ 트레이너 추천 영상은 30% 시청 조건 없이 즉시 완료 가능하도록 수정
 function TrainerRecommendationPlayer({ memberId }: { memberId: string }) {
   const [videos, setVideos] = useState<
-    { id: string; title: string; video_url: string }[]
+    { id: string; title: string; video_url: string; description?: string }[]
   >([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const playerRef = useRef<HTMLIFrameElement>(null);
@@ -271,21 +271,25 @@ function TrainerRecommendationPlayer({ memberId }: { memberId: string }) {
     const fetch = async () => {
       const { data } = await supabase
         .from("member_recommendations")
-        .select("id, order, exercise_videos(title, video_url)")
+        .select("id, order, description, exercise_videos(title, video_url)")
         .eq("member_id", memberId)
         .eq("is_completed", false)
         .order("order", { ascending: true });
 
       if (data) {
         setVideos(
-          data.map((r: any) => ({ id: r.id, ...r.exercise_videos }))
+          data.map((r: any) => ({
+            id: r.id,
+            title: r.exercise_videos.title,
+            video_url: r.exercise_videos.video_url,
+            description: r.description, // 💬 설명 포함
+          }))
         );
         setCurrentIndex(0);
       }
     };
     fetch();
   }, [memberId]);
-
   const handleComplete = async () => {
     if (!currentVideo) return;
     const { error } = await supabase
@@ -309,7 +313,15 @@ function TrainerRecommendationPlayer({ memberId }: { memberId: string }) {
           title={currentVideo.title}
         ></iframe>
       </div>
+
       <div className="font-medium">{currentVideo.title}</div>
+
+      {currentVideo.description && (
+        <div className="text-sm text-gray-600 whitespace-pre-wrap">
+          💬 {currentVideo.description}
+        </div>
+      )}
+
       <button
         onClick={handleComplete}
         className="w-full py-2 rounded-lg font-medium bg-teal-500 text-white"

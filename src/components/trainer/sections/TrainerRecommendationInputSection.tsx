@@ -1,10 +1,12 @@
-// ✅ 드래그 & 드롭 순서 변경 + Supabase 업데이트 적용 버전 + 기존 기능 유지
-// TrainerRecommendationInputSection.tsx (최종 통합)
-
 import { useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 import { DndContext, closestCenter } from "@dnd-kit/core";
-import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
 interface Props {
@@ -15,8 +17,10 @@ interface MemberRecommendation {
   id: string;
   assigned_at: string;
   is_completed: boolean;
+  trainer_confirmed?: boolean;
   recommendation_id: string;
   order: number;
+  description?: string;
   exercise_videos: {
     title: string;
     video_url: string;
@@ -25,8 +29,20 @@ interface MemberRecommendation {
   };
 }
 
-function SortableItem({ rec }: { rec: MemberRecommendation }) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: rec.id });
+function SortableItem({
+  rec,
+  onConfirm,
+  onDelete,
+  onEditDescription,
+}: {
+  rec: MemberRecommendation;
+  onConfirm: (id: string) => void;
+  onDelete: (id: string) => void;
+  onEditDescription: (rec: MemberRecommendation) => void;
+}) {
+  const { setNodeRef, transform, transition, attributes, listeners } =
+    useSortable({ id: rec.id });
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -36,10 +52,18 @@ function SortableItem({ rec }: { rec: MemberRecommendation }) {
     <div
       ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
       className="bg-gray-50 rounded-lg p-3 mb-2 shadow-sm"
     >
+      {/* 드래그 핸들 */}
+      <div
+        {...attributes}
+        {...listeners}
+        className="text-xs text-gray-400 mb-2 cursor-move select-none"
+      >
+        ☰ 드래그
+      </div>
+
+      {/* 제목 및 영상 */}
       <div className="text-sm font-medium mb-1">{rec.exercise_videos.title}</div>
       <iframe
         src={rec.exercise_videos.video_url}
@@ -48,16 +72,108 @@ function SortableItem({ rec }: { rec: MemberRecommendation }) {
         allowFullScreen
         title={rec.exercise_videos.title}
       />
-      <div className="text-xs text-gray-500 flex justify-between">
+
+      {/* 설명 */}
+      {rec.description && (
+        <div className="text-xs text-gray-700 mb-2 whitespace-pre-wrap">{rec.description}</div>
+      )}
+
+      {/* 상태 + 액션 버튼 */}
+      <div className="text-xs text-gray-500 flex justify-between items-center">
         <span>#{rec.exercise_videos.category}</span>
-        <span>{rec.is_completed ? "✅ 완료됨" : "⏳ 미완료"}</span>
+        <span className="flex gap-2 items-center">
+          {/* 상태 구분 */}
+          {!rec.is_completed && (
+            <span className="text-gray-400">⏳ 미완료</span>
+          )}
+
+          {rec.is_completed && !rec.trainer_confirmed && (
+            <>
+              <span className="text-green-600">✅ 완료됨</span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onConfirm(rec.id);
+                }}
+                className="text-blue-500 hover:underline text-xs"
+              >
+                확인
+              </button>
+            </>
+          )}
+
+          {/* 항상 표시되는 버튼 */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onEditDescription(rec);
+            }}
+            className="text-green-500 hover:underline text-xs"
+          >
+            설명하기
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(rec.id);
+            }}
+            className="text-red-500 hover:underline text-xs"
+          >
+            삭제
+          </button>
+        </span>
       </div>
     </div>
   );
 }
 
+
+function DescriptionEditModal({
+  rec,
+  onClose,
+  onSaved,
+}: {
+  rec: MemberRecommendation;
+  onClose: () => void;
+  onSaved: (desc: string) => void;
+}) {
+  const [desc, setDesc] = useState(rec.description || "");
+  const [loading, setLoading] = useState(false);
+
+  const handleSave = async () => {
+    setLoading(true);
+    await supabase
+      .from("member_recommendations")
+      .update({ description: desc })
+      .eq("id", rec.id);
+    setLoading(false);
+    onSaved(desc);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+      <div className="bg-white p-5 rounded-xl shadow-lg w-full max-w-md z-50">
+        <h3 className="text-lg font-semibold mb-2">설명 입력</h3>
+        <textarea
+          value={desc}
+          onChange={(e) => setDesc(e.target.value)}
+          className="w-full border rounded p-2 h-28"
+          placeholder="예: 3세트 15회씩 반복하세요"
+        />
+        <div className="flex justify-end mt-3 gap-2">
+          <button onClick={onClose} className="bg-gray-200 px-3 py-1 rounded">취소</button>
+          <button onClick={handleSave} disabled={loading} className="bg-blue-600 text-white px-3 py-1 rounded">
+            저장
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 export default function TrainerRecommendationInputSection({ memberId }: Props) {
   const [recommendations, setRecommendations] = useState<MemberRecommendation[]>([]);
+  const [editingRec, setEditingRec] = useState<MemberRecommendation | null>(null);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState("");
   const [showModal, setShowModal] = useState(false);
@@ -66,24 +182,26 @@ export default function TrainerRecommendationInputSection({ memberId }: Props) {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [categoryList, setCategoryList] = useState<string[]>([]);
 
-  const assignedIds = new Set(recommendations.map(r => r.recommendation_id));
+  const assignedIds = new Set(recommendations.map((r) => r.recommendation_id));
 
   const fetchRecommendations = async () => {
     setLoading(true);
     const { data } = await supabase
       .from("member_recommendations")
-      .select("id, assigned_at, is_completed, recommendation_id, order, exercise_videos(title, video_url, category, tags)")
+      .select("id, assigned_at, is_completed, trainer_confirmed, recommendation_id, order, description, exercise_videos(title, video_url, category, tags)")
       .eq("member_id", memberId)
+      .or("trainer_confirmed.is.null,trainer_confirmed.eq.false")
       .order("order", { ascending: true });
+
     setRecommendations((data ?? []) as unknown as MemberRecommendation[]);
     setLoading(false);
   };
 
   const fetchAllVideos = async () => {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("exercise_videos")
       .select("id, title, video_url, category, tags");
-    if (!error && data) setAllVideos(data);
+    if (data) setAllVideos(data);
   };
 
   const handleAssign = async (videoId: string) => {
@@ -91,35 +209,48 @@ export default function TrainerRecommendationInputSection({ memberId }: Props) {
       setStatus("⚠️ 이미 추천한 영상입니다.");
       return;
     }
-    const maxOrder = Math.max(...recommendations.map(r => r.order || 0), 0);
+    const maxOrder = Math.max(...recommendations.map((r) => r.order || 0), 0);
     const { error } = await supabase.from("member_recommendations").insert({
       member_id: memberId,
       recommendation_id: videoId,
       order: maxOrder + 1,
     });
-    if (error) setStatus("❌ 배정 실패: " + error.message);
-    else {
+    if (!error) {
       setStatus("✅ 영상이 성공적으로 배정되었습니다.");
       setShowModal(false);
       fetchRecommendations();
     }
   };
 
-
-
   const handleDragEnd = async (event: any) => {
     const { active, over } = event;
     if (active.id !== over.id) {
-      const oldIndex = recommendations.findIndex(r => r.id === active.id);
-      const newIndex = recommendations.findIndex(r => r.id === over.id);
-      const newOrder = arrayMove(recommendations, oldIndex, newIndex);
-      setRecommendations(newOrder);
-
-      const updates = newOrder.map((rec, idx) => ({ id: rec.id, order: idx + 1 }));
+      const oldIndex = recommendations.findIndex((r) => r.id === active.id);
+      const newIndex = recommendations.findIndex((r) => r.id === over.id);
+      const reordered = arrayMove(recommendations, oldIndex, newIndex);
+      setRecommendations(reordered);
       await Promise.all(
-        updates.map(u =>
-          supabase.from("member_recommendations").update({ order: u.order }).eq("id", u.id)
+        reordered.map((r, i) =>
+          supabase.from("member_recommendations").update({ order: i + 1 }).eq("id", r.id)
         )
+      );
+    }
+  };
+
+  const handleConfirm = async (id: string) => {
+    await supabase.from("member_recommendations").update({ trainer_confirmed: true }).eq("id", id);
+    fetchRecommendations();
+  };
+
+  const handleDelete = async (id: string) => {
+    await supabase.from("member_recommendations").delete().eq("id", id);
+    fetchRecommendations();
+  };
+
+  const handleSaveDescription = (desc: string) => {
+    if (editingRec) {
+      setRecommendations((prev) =>
+        prev.map((r) => (r.id === editingRec.id ? { ...r, description: desc } : r))
       );
     }
   };
@@ -130,12 +261,12 @@ export default function TrainerRecommendationInputSection({ memberId }: Props) {
   }, [memberId]);
 
   useEffect(() => {
-    const cats = Array.from(new Set(allVideos.map(v => v.category || ""))).filter(Boolean);
+    const cats = Array.from(new Set(allVideos.map((v) => v.category || ""))).filter(Boolean);
     setCategoryList(cats);
   }, [allVideos]);
 
   const filteredVideos = allVideos.filter(
-    v =>
+    (v) =>
       (!selectedCategory || v.category === selectedCategory) &&
       (!searchTerm ||
         v.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -155,12 +286,21 @@ export default function TrainerRecommendationInputSection({ memberId }: Props) {
       </div>
 
       {loading ? (
-        <p className="text-gray-500 text-sm">불러오는 중...</p>
+        <p className="text-sm text-gray-400">불러오는 중...</p>
       ) : (
         <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={recommendations.map(r => r.id)} strategy={verticalListSortingStrategy}>
-            {recommendations.map(rec => (
-              <SortableItem key={rec.id} rec={rec} />
+          <SortableContext
+            items={recommendations.map((r) => r.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            {recommendations.map((rec) => (
+              <SortableItem
+                key={rec.id}
+                rec={rec}
+                onConfirm={handleConfirm}
+                onDelete={handleDelete}
+                onEditDescription={setEditingRec}
+              />
             ))}
           </SortableContext>
         </DndContext>
@@ -174,18 +314,20 @@ export default function TrainerRecommendationInputSection({ memberId }: Props) {
               <select
                 className="border rounded px-2 py-1 text-sm"
                 value={selectedCategory}
-                onChange={e => setSelectedCategory(e.target.value)}
+                onChange={(e) => setSelectedCategory(e.target.value)}
               >
                 <option value="">전체 카테고리</option>
-                {categoryList.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
+                {categoryList.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
                 ))}
               </select>
               <input
                 className="border rounded px-2 py-1 text-sm flex-1"
                 placeholder="검색어 입력(제목/태그)"
                 value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
             <div className="grid grid-cols-1 gap-3 max-h-96 overflow-y-auto">
@@ -212,7 +354,7 @@ export default function TrainerRecommendationInputSection({ memberId }: Props) {
                       allow="autoplay; fullscreen"
                       allowFullScreen
                       title={rec.title}
-                      onError={e => {
+                      onError={(e) => {
                         (e.target as HTMLIFrameElement).style.display = "none";
                       }}
                     />
@@ -221,7 +363,9 @@ export default function TrainerRecommendationInputSection({ memberId }: Props) {
                         <span>태그: {rec.tags.join(", ")}</span>
                       )}
                       <span className="ml-2">
-                        {assignedIds.has(rec.id) ? "이미 추천됨" : "클릭하여 추천"}
+                        {assignedIds.has(rec.id)
+                          ? "이미 추천됨"
+                          : "클릭하여 추천"}
                       </span>
                     </div>
                   </div>
@@ -236,6 +380,14 @@ export default function TrainerRecommendationInputSection({ memberId }: Props) {
             </button>
           </div>
         </div>
+      )}
+
+      {editingRec && (
+        <DescriptionEditModal
+          rec={editingRec}
+          onClose={() => setEditingRec(null)}
+          onSaved={handleSaveDescription}
+        />
       )}
 
       {status && (
