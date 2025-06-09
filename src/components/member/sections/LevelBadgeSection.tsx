@@ -7,8 +7,8 @@ interface Props {
 export default function LevelBadgeSection({ memberId }: Props) {
   const {
     missionCount,
-    workoutCount,
     routineCount,
+    lessonCount,
     level,
     percent,
     score,
@@ -41,7 +41,7 @@ export default function LevelBadgeSection({ memberId }: Props) {
       </div>
 
       <p className="text-sm text-center text-teal-600 mb-4">
-        미션 {missionCount}회, 운동 {workoutCount}회, 주간 운동 {routineCount}회 완료
+        미션 {missionCount}회, 1:1 레슨 {lessonCount}회, 주간 운동 {routineCount}회 완료
       </p>
     </section>
   );

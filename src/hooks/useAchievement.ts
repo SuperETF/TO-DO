@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { subscribeToRealtime } from "../lib/realtime";
+
 export function useAchievement(memberId: string) {
   const [state, setState] = useState({
     missionCount: 0,
     workoutCount: 0,
     routineCount: 0,
-    level: 0,
+    lessonCount: 0,
+    personalCount: 0,
+    level: 1,
     score: 0,
     percent: 0,
   });
@@ -19,17 +22,15 @@ export function useAchievement(memberId: string) {
       .single();
 
     if (data && !error) {
-      const score = data.score ?? 0;
-      const level = data.level ?? 0;
-      const percent = data.percent ?? 0;
-
       setState({
         missionCount: data.mission_count ?? 0,
         workoutCount: data.workout_count ?? 0,
         routineCount: data.routine_count ?? 0,
-        level,
-        score,
-        percent,
+        lessonCount: data.lesson_count ?? 0,
+        personalCount: data.personal_count ?? 0,
+        score: data.score ?? 0,
+        level: data.level ?? 1,
+        percent: data.percent ?? 0,
       });
     }
   };
@@ -40,7 +41,7 @@ export function useAchievement(memberId: string) {
     fetch();
 
     const unsubscribe = subscribeToRealtime(() => {
-      fetch(); // 테이블 변경 발생 시 View 재조회
+      fetch(); // 실시간 반영
     });
 
     return () => {

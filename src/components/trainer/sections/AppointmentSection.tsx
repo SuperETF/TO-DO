@@ -15,6 +15,7 @@ export default function AppointmentSection({ memberId }: Props) {
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState("");
   const [toastType, setToastType] = useState<"success" | "error">("success");
+  const [appointmentData, setAppointmentData] = useState<any>(null); // 예약 데이터 상태 추가
 
   useEffect(() => {
     const fetchAppointment = async () => {
@@ -29,6 +30,7 @@ export default function AppointmentSection({ memberId }: Props) {
       if (data) {
         setTime(data.appointment_time ?? "10:00");
         setReason(data.reason ?? "");
+        setAppointmentData(data); // 예약 데이터를 상태에 저장
       } else {
         setTime("10:00");
         setReason("");
@@ -80,11 +82,29 @@ export default function AppointmentSection({ memberId }: Props) {
     setTimeout(() => setToast(""), 3000);
   };
 
+  const handleComplete = async () => {
+    if (!appointmentData || appointmentData.is_completed) return; // 이미 완료된 예약이라면 아무 작업도 하지 않음
+  
+    const { error } = await supabase
+      .from("appointments")
+      .update({ is_completed: true }) // 운동 완료 처리
+      .eq("id", appointmentData.id); // 현재 예약 ID로 업데이트
+
+    if (error) {
+      setToast("❌ 운동 완료 처리 실패: " + error.message);
+      setToastType("error");
+    } else {
+      setToast("✅ 운동 완료 처리 완료");
+      setToastType("success");
+      setAppointmentData((prevState: any) => ({ ...prevState, is_completed: true })); // 로컬 상태 업데이트
+    }
+  };
+
   const timeOptions = Array.from({ length: 48 }, (_, i) => {
-  const hour = String(Math.floor(i / 2)).padStart(2, "0");
-  const minute = i % 2 === 0 ? "00" : "30";
-  return `${hour}:${minute}`;
-});
+    const hour = String(Math.floor(i / 2)).padStart(2, "0");
+    const minute = i % 2 === 0 ? "00" : "30";
+    return `${hour}:${minute}`;
+  });
 
   return (
     <div className="space-y-5">
@@ -133,6 +153,16 @@ export default function AppointmentSection({ memberId }: Props) {
       >
         {loading ? "저장 중..." : "저장하기"}
       </button>
+
+      {/* 운동 완료 버튼 */}
+      {appointmentData && !appointmentData.is_completed && (
+        <button
+          onClick={handleComplete}
+          className="w-full bg-green-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-green-700 transition mt-3"
+        >
+          운동 완료
+        </button>
+      )}
 
       {toast && (
         <p
