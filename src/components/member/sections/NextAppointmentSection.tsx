@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
-import { getISOWeek } from "date-fns";
 
 interface Appointment {
   id: string;
@@ -106,25 +105,7 @@ export default function NextAppointmentSection({ memberId }: Props) {
       return;
     }
   
-    const workoutDate = new Date(reservedDate);
-    const day = (workoutDate.getDay() + 6) % 7;
-    const weekId = `${workoutDate.getFullYear()}-W${String(getISOWeek(workoutDate)).padStart(2, "0")}`;
-  
-    // ✅ 1. routine_logs 기록
-    const { error: routineError } = await supabase.from("routine_logs").upsert({
-      member_id: memberId,
-      date: reservedDate,
-      day,
-      week_id: weekId,
-      completed: true,
-    }, { onConflict: "member_id,date" });
-  
-    if (routineError) {
-      alert("루틴 기록 실패: " + routineError.message);
-      return;
-    }
-  
-    // ✅ 2. appointments.is_completed = true 로 상태 변경
+    // ✅ 1. appointments 완료 처리
     const { error: completeError } = await supabase
       .from("appointments")
       .update({ is_completed: true })
@@ -135,20 +116,11 @@ export default function NextAppointmentSection({ memberId }: Props) {
       return;
     }
   
-    // ✅ 3. 점수 15점 증가
-    const { error: scoreError } = await supabase.rpc("increment_score", {
-      member_id_input: memberId,
-      point: 15,
-    });
-  
-    if (scoreError) {
-      alert("점수 반영 실패: " + scoreError.message);
-      return;
-    }
-  
-    alert("운동 완료! 점수 +15점");
+    // ✅ 2. 점수는 view에서 자동 계산되므로 추가 호출 생략
+    alert("운동 완료! 점수는 자동으로 반영됩니다.");
     fetchAppointments();
   };
+  
   
 
   useEffect(() => {

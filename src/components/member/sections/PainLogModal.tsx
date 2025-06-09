@@ -1,3 +1,6 @@
+// ✅ 트레이너가 작성한 사전 통증 점수 (pain_logs)에서 부위를 가져와
+// ✅ 회원이 해당 부위에 대해 자신의 통증 일기를 작성 (member_pain_logs)
+
 import { useState, useEffect } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 
@@ -7,7 +10,7 @@ interface Props {
 }
 
 interface PainLog {
-  id: string;
+  id?: string;
   date: string;
   pain_area: string;
   pain_score: number;
@@ -76,20 +79,21 @@ export default function PainLogModal({ memberId, onClose }: Props) {
   useEffect(() => {
     fetchLogs();
     fetchPainAreas();
-  }, []);
+  }, [memberId]);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
       <div className="bg-white rounded-2xl w-full max-w-2xl h-[90vh] overflow-hidden shadow-xl flex flex-col">
         {/* 헤더 */}
         <div className="flex justify-between items-center p-4 border-b">
-          <h2 className="text-lg font-semibold">통증 기록</h2>
+          <h2 className="text-lg font-semibold">통증 일기</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-black text-lg">×</button>
         </div>
 
         {/* 입력 섹션 */}
         <div className="p-4 space-y-3">
           <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full border rounded p-2" />
+
           <select
             value={painArea}
             onChange={(e) => setPainArea(e.target.value)}
@@ -100,6 +104,7 @@ export default function PainLogModal({ memberId, onClose }: Props) {
               <option key={area} value={area}>{area}</option>
             ))}
           </select>
+
           <select
             value={painScore}
             onChange={(e) => setPainScore(Number(e.target.value))}
@@ -110,8 +115,11 @@ export default function PainLogModal({ memberId, onClose }: Props) {
               <option key={i} value={i}>{i}점</option>
             ))}
           </select>
+
           <input placeholder="오늘 한 활동" value={activity} onChange={e => setActivity(e.target.value)} className="w-full border rounded p-2" />
+
           <textarea placeholder="통증 변화 주관적 서술" value={note} onChange={e => setNote(e.target.value)} className="w-full border rounded p-2" rows={3} />
+
           <button onClick={handleSubmit} className="w-full bg-teal-500 text-white py-3 rounded font-semibold hover:bg-teal-600">
             저장하기
           </button>

@@ -22,11 +22,16 @@ export default function TrainerCommentSection({ memberId }: Props) {
         .select("note, created_at")
         .eq("member_id", memberId)
         .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
+        .limit(1); // ✅ .single() 제거
 
-      if (!error && data) {
-        setNote(data);
+      if (error) {
+        console.error("❌ 트레이너 노트 불러오기 실패:", error.message);
+      }
+
+      if (data && data.length > 0) {
+        setNote(data[0]);
+      } else {
+        setNote(null);
       }
 
       setLoading(false);

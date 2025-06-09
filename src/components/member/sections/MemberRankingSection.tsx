@@ -6,7 +6,6 @@ interface Member {
   name: string;
   score: number;
   level: number;
-  percent: number;
 }
 
 interface Props {
@@ -20,32 +19,21 @@ export default function MemberRankingSection({ memberId }: Props) {
   useEffect(() => {
     const fetchRankings = async () => {
       const { data: levels, error: levelError } = await supabase
-        .from("member_levels")
-        .select("member_id, score, level, percent")
+        .from("member_achievement_view")
+        .select("member_id, name, score, level")
         .order("score", { ascending: false });
 
-      const { data: members, error: memberError } = await supabase
-        .from("members")
-        .select("id, name");
-
-      if (levelError || memberError || !levels || !members) {
-        console.error("❌ 데이터 불러오기 실패", levelError || memberError);
+      if (levelError || !levels) {
+        console.error("❌ 데이터 불러오기 실패", levelError);
         return;
       }
 
-      const enriched: Member[] = levels
-        .map((l: any) => {
-          const found = members.find((m) => m.id === l.member_id);
-          if (!found || !found.name) return null; // 이름 없는 사용자 제거
-          return {
-            id: l.member_id,
-            name: found.name,
-            score: l.score,
-            level: l.level,
-            percent: Number(l.percent),
-          };
-        })
-        .filter((m): m is Member => m !== null);
+      const enriched: Member[] = levels.map((l: any) => ({
+        id: l.member_id,
+        name: l.name,
+        score: l.score,
+        level: Math.floor(l.level), // float8 → 정수 변환
+      }));
 
       setRankings(enriched);
 
