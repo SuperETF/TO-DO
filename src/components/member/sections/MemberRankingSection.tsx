@@ -18,21 +18,21 @@ export default function MemberRankingSection({ memberId }: Props) {
 
   useEffect(() => {
     const fetchRankings = async () => {
-      const { data: levels, error: levelError } = await supabase
+      const { data, error } = await supabase
         .from("member_achievement_view")
         .select("member_id, name, score, level")
         .order("score", { ascending: false });
 
-      if (levelError || !levels) {
-        console.error("❌ 데이터 불러오기 실패", levelError);
+      if (error || !data) {
+        console.error("❌ 랭킹 데이터 불러오기 실패:", error);
         return;
       }
 
-      const enriched: Member[] = levels.map((l: any) => ({
-        id: l.member_id,
-        name: l.name,
-        score: l.score,
-        level: Math.floor(l.level), // float8 → 정수 변환
+      const enriched: Member[] = data.map((m: any) => ({
+        id: m.member_id,
+        name: m.name,
+        score: m.score ?? 0,
+        level: Math.floor(m.level ?? 0),
       }));
 
       setRankings(enriched);

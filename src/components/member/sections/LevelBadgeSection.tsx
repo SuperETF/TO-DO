@@ -10,31 +10,39 @@ export default function LevelBadgeSection({ memberId }: Props) {
     workoutCount,
     routineCount,
     level,
+    percent,
     score,
-  } = useAchievement(memberId);
+  } = useAchievement(memberId); // ✅ score 포함해 표시용으로
 
   return (
     <section className="bg-white rounded-xl shadow-sm p-4 mb-6">
       <h2 className="text-lg font-semibold mb-3">나의 성취</h2>
 
-      <div className="flex items-center mb-4">
+      <div className="flex items-center mb-3">
         <div className="w-12 h-12 bg-teal-100 rounded-full flex items-center justify-center text-teal-500 mr-3">
           <i className="fas fa-medal text-xl"></i>
         </div>
 
         <div className="flex-1">
-          <div className="flex justify-between">
-            <span className="font-medium text-base">레벨 {level}</span>
-            <span className="text-sm text-gray-500">
+          <div className="flex justify-between mb-1">
+            <span className="font-medium">레벨 {level}</span>
+            <span className="text-gray-500 text-sm">
               총 점수: {score.toLocaleString()}점
             </span>
+          </div>
+
+          <div className="w-full bg-gray-200 rounded-full h-2.5">
+            <div
+              className="bg-teal-500 h-2.5 rounded-full transition-all duration-500"
+              style={{ width: `${percent}%` }}
+            ></div>
           </div>
         </div>
       </div>
 
-      <div className="text-sm text-center text-teal-600">
+      <p className="text-sm text-center text-teal-600 mb-4">
         미션 {missionCount}회, 운동 {workoutCount}회, 주간 운동 {routineCount}회 완료
-      </div>
+      </p>
     </section>
   );
 }
