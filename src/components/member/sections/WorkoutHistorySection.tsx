@@ -54,24 +54,19 @@ export default function WorkoutHistorySection({ memberId }: Props) {
                 <p className="text-sm text-gray-600 mb-1">{log.feedback}</p>
               )}
 
-              <div className="flex flex-wrap items-center gap-2">
-                {log.pain_score !== null && (
-                  <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
-                    통증 {log.pain_score}점
-                  </span>
-                )}
-                {log.completed !== null && (
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded-full ${
-                      log.completed
-                        ? "bg-blue-100 text-blue-700"
-                        : "bg-gray-100 text-gray-500"
-                    }`}
-                  >
-                    {log.completed ? "완료" : "미완료"}
-                  </span>
-                )}
-              </div>
+<div className="flex flex-wrap items-center gap-2">
+  {log.pain_score !== null && (
+    <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+      통증 {log.pain_score}점
+    </span>
+  )}
+  {log.completed && (
+    <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+      완료
+    </span>
+  )}
+</div>
+
             </div>
           ))}
         </div>

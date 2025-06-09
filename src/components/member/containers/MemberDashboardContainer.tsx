@@ -60,19 +60,19 @@ export default function MemberDashboardContainer({ memberId }: Props) {
           <WeeklyExerciseSection
             memberId={member.id}
             registrationDate={member.created_at}
-            refetch={achievement.refetch}
+            refetch={achievement.refetch} // refetch 사용
           />
           <WeeklyRoutineTrackerSection
             memberId={member.id}
-            refetch={achievement.refetch}
+            refetch={achievement.refetch} // refetch 사용
           />
           <MonthlyMissionSection
             memberId={member.id}
-            refetch={achievement.refetch}
+            refetch={achievement.refetch} // refetch 사용
           />
           <LevelBadgeSection
             memberId={member.id}
-            {...achievement}
+            {...achievement} // achievement 객체를 그대로 전달
           />
           <MemberRankingSection memberId={memberId} />
           <NextAppointmentSection memberId={member.id} />

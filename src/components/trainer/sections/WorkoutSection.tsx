@@ -2,15 +2,19 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 import type { Database } from "../../../types/supabase.ts";
 
-type WorkoutInsert = Database["public"]["Tables"]["workouts"]["Insert"];
+// WorkoutInsert 확장
+// 👇 여기는 수정 X
+type WorkoutInsert = Omit<Database["public"]["Tables"]["workouts"]["Insert"], "trainer_id"> & {
+  trainer_id?: string | null;
+};
 type WorkoutRow = Database["public"]["Tables"]["workouts"]["Row"];
 
 export interface WorkoutSectionProps {
-  memberId: string;
   onSaved?: () => void;
+  memberId: string;
 }
 
-export default function WorkoutSection({ memberId, onSaved }: WorkoutSectionProps) {
+export default function WorkoutSection({ onSaved, memberId }: WorkoutSectionProps) {
   const [date, setDate] = useState<string>("");
   const [content, setContent] = useState<string>("");
   const [loading, setLoading] = useState(false);
@@ -18,7 +22,26 @@ export default function WorkoutSection({ memberId, onSaved }: WorkoutSectionProp
   const [toastType, setToastType] = useState<"success" | "error">("success");
   const [editId, setEditId] = useState<string | null>(null);
   const [workouts, setWorkouts] = useState<WorkoutRow[]>([]);
+  const [trainerId, setTrainerId] = useState<string | null>(null);
   const toastTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  const fetchTrainerId = async () => {
+    const { data, error } = await supabase
+      .from("members")
+      .select("trainer_id")
+      .eq("id", memberId)
+      .single();
+
+    if (error) {
+      console.error("Error fetching trainer_id:", error);
+    } else {
+      if (data?.trainer_id && typeof data.trainer_id === "string") {
+        setTrainerId(data.trainer_id);
+      } else {
+        setTrainerId(null);
+      }
+    }
+  };
 
   const fetchWorkouts = async () => {
     const { data, error } = await supabase
@@ -27,12 +50,17 @@ export default function WorkoutSection({ memberId, onSaved }: WorkoutSectionProp
       .eq("member_id", memberId)
       .order("created_at", { ascending: false });
 
-    if (!error && data) setWorkouts(data);
-    else setWorkouts([]);
+    if (error) {
+      console.error("Error fetching workouts:", error);
+      setWorkouts([]);
+    } else {
+      setWorkouts(data ?? []);
+    }
   };
 
   useEffect(() => {
-    if (memberId) fetchWorkouts();
+    fetchTrainerId();
+    fetchWorkouts();
   }, [memberId]);
 
   const showToast = (msg: string, type: "success" | "error" = "success") => {
@@ -47,18 +75,33 @@ export default function WorkoutSection({ memberId, onSaved }: WorkoutSectionProp
       showToast("⚠️ 날짜와 운동 기록을 모두 입력해주세요.", "error");
       return;
     }
-
+  
+    // ✅ 여기에 추가
+    if (
+      !trainerId ||
+      typeof trainerId !== "string" ||
+      !/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(trainerId)
+    ) {
+      showToast("❌ 유효하지 않은 트레이너 ID입니다.", "error");
+      return;
+    }
+  
     setLoading(true);
-
+  
     const payload: WorkoutInsert = {
       member_id: memberId,
+      trainer_id: trainerId,
+      date,
       title: content,
-      date: date,
     };
-
+  
     const finalPayload = editId ? { ...payload, id: editId } : payload;
-
+  
+    console.log("✅ 최종 저장 payload:", finalPayload);
+  
     const { error } = await supabase.from("workouts").upsert([finalPayload]);
+
+
 
     if (error) {
       showToast("❌ 저장 실패: " + error.message, "error");
@@ -68,7 +111,7 @@ export default function WorkoutSection({ memberId, onSaved }: WorkoutSectionProp
       setContent("");
       setEditId(null);
       await fetchWorkouts();
-      if (onSaved) onSaved();
+      onSaved?.();
     }
 
     setLoading(false);
@@ -140,9 +183,7 @@ export default function WorkoutSection({ memberId, onSaved }: WorkoutSectionProp
               className="flex justify-between items-start text-gray-700 border-b pb-2"
             >
               <div className="flex flex-col">
-                <span className="text-xs text-gray-400">
-                  {w.date ?? "날짜 없음"}
-                </span>
+                <span className="text-xs text-gray-400">{w.date ?? "날짜 없음"}</span>
                 <span>{w.title}</span>
               </div>
               <div className="flex space-x-2 pt-1">
