@@ -22,31 +22,29 @@ export default function WeeklyExerciseSection({
       <h2 className="text-lg font-semibold mb-4">운동 영상</h2>
 
       <div className="flex justify-center mb-4">
-  <div className="inline-flex rounded-full bg-gray-100 p-1 shadow-inner">
-    <button
-      onClick={() => setTab("weekly")}
-      className={`px-4 py-1.5 text-sm font-semibold rounded-full transition-all duration-200 ${
-        tab === "weekly"
-          ? "bg-white text-indigo-600 shadow"
-          : "text-gray-500 hover:text-indigo-600"
-      }`}
-    >
-      🗓 이번 주의 운동
-    </button>
-    <button
-      onClick={() => setTab("trainer")}
-      className={`px-4 py-1.5 text-sm font-semibold rounded-full transition-all duration-200 ${
-        tab === "trainer"
-          ? "bg-white text-indigo-600 shadow"
-          : "text-gray-500 hover:text-indigo-600"
-      }`}
-    >
-      🎯 트레이너 추천 운동
-    </button>
-  </div>
-</div>
-
-
+        <div className="inline-flex rounded-full bg-gray-100 p-1 shadow-inner">
+          <button
+            onClick={() => setTab("weekly")}
+            className={`px-4 py-1.5 text-sm font-semibold rounded-full transition-all duration-200 ${
+              tab === "weekly"
+                ? "bg-white text-indigo-600 shadow"
+                : "text-gray-500 hover:text-indigo-600"
+            }`}
+          >
+            🗓 이번 주의 운동
+          </button>
+          <button
+            onClick={() => setTab("trainer")}
+            className={`px-4 py-1.5 text-sm font-semibold rounded-full transition-all duration-200 ${
+              tab === "trainer"
+                ? "bg-white text-indigo-600 shadow"
+                : "text-gray-500 hover:text-indigo-600"
+            }`}
+          >
+            🎯 트레이너 추천 운동
+          </button>
+        </div>
+      </div>
 
       {tab === "weekly" ? (
         <WeeklyExercisePlayer
@@ -61,6 +59,92 @@ export default function WeeklyExerciseSection({
   );
 }
 
+// 📅 주차 계산기
+function getCurrentWeekSince(startDate: string): number {
+  const start = new Date(startDate);
+  const now = new Date();
+  const diffInMs = now.getTime() - start.getTime();
+  const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+  return Math.max(1, Math.floor(diffInDays / 7) + 1);
+}
+
+// 🎯 트레이너 추천 영상 (생략된 부분은 다음 분할로 이어집니다)
+function TrainerRecommendationPlayer({ memberId }: { memberId: string }) {
+  const [videos, setVideos] = useState<
+    { id: string; title: string; video_url: string; description?: string }[]
+  >([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const playerRef = useRef<HTMLIFrameElement>(null);
+
+  const currentVideo = videos[currentIndex];
+
+  useEffect(() => {
+    const fetch = async () => {
+      const { data } = await supabase
+        .from("member_recommendations")
+        .select("id, order, description, exercise_videos(title, video_url)")
+        .eq("member_id", memberId)
+        .eq("is_completed", false)
+        .order("order", { ascending: true });
+
+      if (data) {
+        setVideos(
+          data.map((r: any) => ({
+            id: r.id,
+            title: r.exercise_videos.title,
+            video_url: r.exercise_videos.video_url,
+            description: r.description,
+          }))
+        );
+        setCurrentIndex(0);
+      }
+    };
+    fetch();
+  }, [memberId]);
+
+  const handleComplete = async () => {
+    if (!currentVideo) return;
+    const { error } = await supabase
+      .from("member_recommendations")
+      .update({ is_completed: true })
+      .eq("id", currentVideo.id);
+    if (!error) {
+      setCurrentIndex((prev) => prev + 1);
+    }
+  };
+
+  return currentVideo ? (
+    <div className="space-y-4">
+      <div className="text-xs text-gray-400">{currentIndex + 1}번 영상</div>
+      <div className="aspect-video mb-2 rounded overflow-hidden">
+        <iframe
+          ref={playerRef}
+          src={currentVideo.video_url}
+          className="w-full h-full"
+          allow="autoplay; fullscreen"
+          title={currentVideo.title}
+        ></iframe>
+      </div>
+
+      <div className="font-medium">{currentVideo.title}</div>
+
+      {currentVideo.description && (
+        <div className="text-sm text-gray-600 whitespace-pre-wrap">
+          💬 {currentVideo.description}
+        </div>
+      )}
+
+      <button
+        onClick={handleComplete}
+        className="w-full py-2 rounded-lg font-medium bg-teal-500 text-white"
+      >
+        ✓ 운동 완료
+      </button>
+    </div>
+  ) : (
+    <p className="text-sm text-gray-500">추천된 영상이 없습니다.</p>
+  );
+}
 // 🎥 주차별 필수 운동
 function WeeklyExercisePlayer({
   memberId,
@@ -77,6 +161,7 @@ function WeeklyExercisePlayer({
   const [videoIndex, setVideoIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [canComplete, setCanComplete] = useState(false);
+  const [isAlreadyCompleted, setIsAlreadyCompleted] = useState(false);
   const [progressPercent, setProgressPercent] = useState<number>(0);
 
   const playerRef = useRef<HTMLIFrameElement>(null);
@@ -98,24 +183,60 @@ function WeeklyExercisePlayer({
         .order("order", { ascending: true });
 
       if (data && data.length > 0) {
-        setWeeklyVideos(
-          data.map((v, i) => ({
-            url: v.video_url,
-            title: v.title,
-            trainer: `${currentWeek}주차 콘텐츠 ${i + 1}번`,
-          }))
+        const formatted = data.map((v, i) => ({
+          url: v.video_url,
+          title: v.title,
+          trainer: `${currentWeek}주차 콘텐츠 ${i + 1}번`,
+        }));
+        setWeeklyVideos(formatted);
+
+        // ✅ 영상 중 마지막으로 완료한 index 불러오기
+        const { data: logs } = await supabase
+          .from("workout_logs")
+          .select("video_url")
+          .eq("member_id", memberId)
+          .eq("is_completed", true)
+          .eq("type", "weekly")
+          .eq("week", currentWeek);
+
+        const completedUrls = logs?.map((l) => l.video_url) || [];
+        const lastCompletedIndex = formatted.findIndex(
+          (v, i) => i > 0 && !completedUrls.includes(v.url)
         );
-        setVideoIndex(0);
+        setVideoIndex(lastCompletedIndex === -1 ? 0 : lastCompletedIndex);
       }
     };
     fetchWeeklyVideos();
   }, [memberId, currentWeek]);
 
   useEffect(() => {
+    totalWatchedSeconds.current = 0;
+    setProgressPercent(0);
+    setCanComplete(false);
+  }, [videoIndex]);
+
+  useEffect(() => {
+    const checkCompleted = async () => {
+      if (!currentVideo?.url) return;
+      const { data } = await supabase
+        .from("workout_logs")
+        .select("id")
+        .eq("member_id", memberId)
+        .eq("video_url", currentVideo.url)
+        .eq("is_completed", true)
+        .maybeSingle();
+
+      setIsAlreadyCompleted(!!data);
+    };
+    checkCompleted();
+  }, [currentVideo?.url, memberId]);
+
+  useEffect(() => {
     if (!currentVideo?.url || !playerRef.current) return;
 
     const player = new Player(playerRef.current);
     const localKey = `watchedSeconds-${memberId}-${currentVideo.url}`;
+    isPlayingRef.current = false;
 
     (async () => {
       const { data } = await supabase
@@ -180,8 +301,9 @@ function WeeklyExercisePlayer({
   }, [currentVideo?.url, memberId]);
 
   const handleComplete = async () => {
-    if (!currentVideo?.url || !canComplete)
-      return alert("30% 이상 시청해야 완료할 수 있습니다.");
+    if (!currentVideo?.url || !canComplete || isAlreadyCompleted)
+      return alert("30% 이상 시청해야 하며, 이미 완료된 영상입니다.");
+
     setLoading(true);
     const todayStr = new Date().toISOString().split("T")[0];
 
@@ -198,8 +320,6 @@ function WeeklyExercisePlayer({
     if (!logError) {
       if (videoIndex + 1 < weeklyVideos.length) {
         setVideoIndex(videoIndex + 1);
-        totalWatchedSeconds.current = 0;
-        setProgressPercent(0);
       } else {
         alert("이번 주차 영상 모두 완료하셨습니다! 🎉");
       }
@@ -215,27 +335,28 @@ function WeeklyExercisePlayer({
       <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden mb-3">
         <div
           className={`h-full ${
-            canComplete ? "bg-green-500" : "bg-teal-500"
+            canComplete && !isAlreadyCompleted ? "bg-green-500" : "bg-teal-500"
           } transition-all duration-300`}
           style={{ width: `${progressPercent}%` }}
         ></div>
       </div>
       <div className="aspect-video rounded-lg overflow-hidden mb-3">
         <iframe
+          key={currentVideo.url}
           ref={playerRef}
           src={currentVideo.url}
           className="w-full h-full"
           allow="autoplay; fullscreen"
-          title="운동영상"
+          title={currentVideo.title}
         ></iframe>
       </div>
       <h3 className="font-medium mb-1">{currentVideo.title}</h3>
       <p className="text-gray-600 text-sm mb-3">{currentVideo.trainer}</p>
       <button
         onClick={handleComplete}
-        disabled={loading}
+        disabled={loading || !canComplete || isAlreadyCompleted}
         className={`w-full py-2 rounded-lg font-medium ${
-          canComplete
+          canComplete && !isAlreadyCompleted
             ? "bg-teal-500 text-white"
             : "bg-gray-300 text-gray-400"
         }`}
@@ -245,91 +366,5 @@ function WeeklyExercisePlayer({
     </>
   ) : (
     <p className="text-sm text-gray-500">아직 등록된 영상이 없습니다.</p>
-  );
-}
-
-// 📅 주차 계산기
-function getCurrentWeekSince(startDate: string): number {
-  const start = new Date(startDate);
-  const now = new Date();
-  const diffInMs = now.getTime() - start.getTime();
-  const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
-  return Math.max(1, Math.floor(diffInDays / 7) + 1);
-}
-
-// ✅ 트레이너 추천 영상은 30% 시청 조건 없이 즉시 완료 가능하도록 수정
-function TrainerRecommendationPlayer({ memberId }: { memberId: string }) {
-  const [videos, setVideos] = useState<
-    { id: string; title: string; video_url: string; description?: string }[]
-  >([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const playerRef = useRef<HTMLIFrameElement>(null);
-
-  const currentVideo = videos[currentIndex];
-
-  useEffect(() => {
-    const fetch = async () => {
-      const { data } = await supabase
-        .from("member_recommendations")
-        .select("id, order, description, exercise_videos(title, video_url)")
-        .eq("member_id", memberId)
-        .eq("is_completed", false)
-        .order("order", { ascending: true });
-
-      if (data) {
-        setVideos(
-          data.map((r: any) => ({
-            id: r.id,
-            title: r.exercise_videos.title,
-            video_url: r.exercise_videos.video_url,
-            description: r.description, // 💬 설명 포함
-          }))
-        );
-        setCurrentIndex(0);
-      }
-    };
-    fetch();
-  }, [memberId]);
-  const handleComplete = async () => {
-    if (!currentVideo) return;
-    const { error } = await supabase
-      .from("member_recommendations")
-      .update({ is_completed: true })
-      .eq("id", currentVideo.id);
-    if (!error) {
-      setCurrentIndex((prev) => prev + 1);
-    }
-  };
-
-  return currentVideo ? (
-    <div className="space-y-4">
-      <div className="text-xs text-gray-400">{currentIndex + 1}번 영상</div>
-      <div className="aspect-video mb-2 rounded overflow-hidden">
-        <iframe
-          ref={playerRef}
-          src={currentVideo.video_url}
-          className="w-full h-full"
-          allow="autoplay; fullscreen"
-          title={currentVideo.title}
-        ></iframe>
-      </div>
-
-      <div className="font-medium">{currentVideo.title}</div>
-
-      {currentVideo.description && (
-        <div className="text-sm text-gray-600 whitespace-pre-wrap">
-          💬 {currentVideo.description}
-        </div>
-      )}
-
-      <button
-        onClick={handleComplete}
-        className="w-full py-2 rounded-lg font-medium bg-teal-500 text-white"
-      >
-        ✓ 운동 완료
-      </button>
-    </div>
-  ) : (
-    <p className="text-sm text-gray-500">추천된 영상이 없습니다.</p>
   );
 }
