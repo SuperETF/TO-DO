@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom"; // ✅ 추가
 import { motion } from "framer-motion";
 import { supabase } from "../../lib/supabaseClient";
 import Header from "../../components/trainer/layout/Header";
@@ -22,9 +22,10 @@ export default function TrainerDashboardPage() {
   const [activeTab, setActiveTab] = useState("members");
   const [modalOpen, setModalOpen] = useState(false);
   const [trainerId, setTrainerId] = useState<string | null>(null);
-  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null); // ✅ 추가
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
 
   const navigate = useNavigate();
+  const location = useLocation(); // ✅ 추가
   const { setDirection, direction } = useSlide();
 
   const fetchMembers = async () => {
@@ -44,6 +45,13 @@ export default function TrainerDashboardPage() {
   useEffect(() => {
     fetchMembers();
   }, []);
+
+  // ✅ 상세 페이지에서 돌아올 때 확대 초기화 보장
+  useEffect(() => {
+    if (location.pathname === "/trainer-dashboard") {
+      setSelectedMemberId(null);
+    }
+  }, [location.pathname]);
 
   const filtered = members
     .filter((m) =>
@@ -86,7 +94,7 @@ export default function TrainerDashboardPage() {
                     <button
                       key={member.id}
                       onClick={() => {
-                        setSelectedMemberId(member.id); // ✅ 클릭할 때만 설정
+                        setSelectedMemberId(member.id);
                         setDirection(1);
                         navigate(`/trainer/member/${member.id}`);
                       }}
