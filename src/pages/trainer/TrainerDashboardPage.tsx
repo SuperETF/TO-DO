@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { supabase } from "../../lib/supabaseClient";
 import Header from "../../components/trainer/layout/Header";
@@ -22,34 +22,28 @@ export default function TrainerDashboardPage() {
   const [activeTab, setActiveTab] = useState("members");
   const [modalOpen, setModalOpen] = useState(false);
   const [trainerId, setTrainerId] = useState<string | null>(null);
-  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null); // ✅ 추가
 
   const navigate = useNavigate();
-  const location = useLocation();
   const { setDirection, direction } = useSlide();
 
+  const fetchMembers = async () => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const trainerId = sessionData.session?.user.id;
+    if (!trainerId) return;
+    setTrainerId(trainerId);
+
+    const { data, error } = await supabase
+      .from("members")
+      .select("*")
+      .eq("trainer_id", trainerId);
+
+    if (!error && data) setMembers(data);
+  };
+
   useEffect(() => {
-    const fetchMembers = async () => {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const trainerId = sessionData.session?.user.id;
-      if (!trainerId) return;
-      setTrainerId(trainerId);
-
-      const { data, error } = await supabase
-        .from("members")
-        .select("*")
-        .eq("trainer_id", trainerId);
-
-      if (!error && data) setMembers(data);
-    };
-
     fetchMembers();
   }, []);
-
-  // ✅ 페이지 이동 시 확대 상태 초기화
-  useEffect(() => {
-    setSelectedMemberId(null);
-  }, [location.pathname]);
 
   const filtered = members
     .filter((m) =>
@@ -92,11 +86,11 @@ export default function TrainerDashboardPage() {
                     <button
                       key={member.id}
                       onClick={() => {
-                        setSelectedMemberId(member.id); // 확대 상태 부여
+                        setSelectedMemberId(member.id); // ✅ 클릭할 때만 설정
                         setDirection(1);
                         navigate(`/trainer/member/${member.id}`);
                       }}
-                      className={`w-full text-left px-4 py-3 rounded-lg flex justify-between items-center transition-transform duration-300 ${
+                      className={`w-full text-left px-4 py-3 rounded-lg flex justify-between items-center transition-transform duration-200 ${
                         selectedMemberId === member.id
                           ? "scale-105 bg-white shadow-md"
                           : "scale-100 bg-white shadow-sm"
@@ -128,6 +122,7 @@ export default function TrainerDashboardPage() {
               activeTab={activeTab}
               setActiveTab={(tab) => {
                 if (tab !== activeTab) {
+                  setSelectedMemberId(null); // ✅ 다른 탭 누르면 초기화
                   setDirection(1);
                   setActiveTab(tab);
                 }
@@ -141,9 +136,7 @@ export default function TrainerDashboardPage() {
           open={modalOpen}
           onClose={() => setModalOpen(false)}
           trainerId={trainerId || undefined}
-          onSuccess={() => {
-            setMembers([]);
-          }}
+          onSuccess={fetchMembers}
         />
       </div>
     </motion.div>
