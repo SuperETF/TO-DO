@@ -9,104 +9,119 @@ export default function LoginPage() {
   const [phoneLast4, setPhoneLast4] = useState("");
   const [name, setName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  // ✅ 자동 로그인 처리
   useEffect(() => {
     const storedRole = localStorage.getItem("role");
-    if (storedRole === "trainer") {
-      navigate("/trainer-dashboard");
-    } else if (storedRole === "member") {
-      navigate("/member-dashboard");
-    }
+    if (storedRole === "trainer") navigate("/trainer-dashboard");
+    else if (storedRole === "member") navigate("/member-dashboard");
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
 
     if (role === "trainer") {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
-
       if (error || !data.user) {
         alert("로그인 실패: 이메일 또는 비밀번호를 확인해주세요.");
+        setIsLoading(false);
         return;
       }
-
       localStorage.setItem("role", "trainer");
       localStorage.setItem("trainer_id", data.user.id);
       navigate("/trainer-dashboard");
     } else {
-        const { data, error } = await supabase
+      const { data, error } = await supabase
         .from("members")
         .select("id, name, phone_last4")
         .eq("name", name.trim())
         .eq("phone_last4", phoneLast4.trim())
         .single();
-      
-
-if (error || !data) {
-  alert("회원 정보를 찾을 수 없습니다. 이름과 전화번호를 확인해주세요.");
-  return;
-}
-
-      
-
+      if (error || !data) {
+        alert("회원 정보를 찾을 수 없습니다. 이름과 전화번호를 확인해주세요.");
+        setIsLoading(false);
+        return;
+      }
       localStorage.setItem("role", "member");
       localStorage.setItem("member_id", data.id);
       navigate("/member-dashboard");
     }
+
+    setIsLoading(false);
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-      <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+    <div className="min-h-screen bg-white flex items-center justify-center px-4 py-12">
+      <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-[#4CD6B4]">TO-DO</h1>
+          <h1 className="text-[#4CD6B4] text-3xl font-bold">TO-DO</h1>
           <p className="text-gray-600 mt-2">오늘도 건강하세요!</p>
         </div>
 
-        <div className="flex mb-6 border-b">
+        <div className="bg-gray-50/50 p-1 rounded-2xl mb-8 flex">
           <button
-            className={`flex-1 py-2 ${role === "trainer" ? "text-[#4CD6B4] border-b-2 border-[#4CD6B4] font-semibold" : "text-gray-500"}`}
             onClick={() => setRole("trainer")}
+            className={`flex-1 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
+              role === "trainer"
+                ? "bg-white text-gray-800 shadow-sm"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
           >
-            트레이너 로그인
+            전문가
           </button>
           <button
-            className={`flex-1 py-2 ${role === "member" ? "text-[#4CD6B4] border-b-2 border-[#4CD6B4] font-semibold" : "text-gray-500"}`}
             onClick={() => setRole("member")}
+            className={`flex-1 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
+              role === "member"
+                ? "bg-white text-gray-800 shadow-sm"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
           >
-            회원 로그인
+            회원
           </button>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-6">
+        <form onSubmit={handleLogin} className="bg-white  rounded-2xl space-y-6">
+          <h2 className="text-2xl font-bold text-gray-800 text-center">
+            {role === "trainer" ? "전문가 로그인" : "회원 로그인"}
+          </h2>
+
           {role === "trainer" ? (
             <>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="이메일"
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4CD6B4] focus:bg-white"
-                required
-              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  이메일
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="이메일 입력"
+                  className="w-full px-4 py-3 rounded-xl bg-gray-50/50 text-gray-800 focus:ring-2 focus:ring-[#4CD6B4] outline-none"
+                  required
+                />
+              </div>
               <div className="relative">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  비밀번호
+                </label>
                 <input
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="비밀번호"
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4CD6B4] focus:bg-white"
+                  placeholder="비밀번호 입력"
+                  className="w-full px-4 py-3 rounded-xl bg-gray-50/50 text-gray-800 focus:ring-2 focus:ring-[#4CD6B4] outline-none"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-9 text-gray-400 hover:text-gray-600"
                 >
                   <i className={`fas ${showPassword ? "fa-eye-slash" : "fa-eye"}`}></i>
                 </button>
@@ -114,32 +129,54 @@ if (error || !data) {
             </>
           ) : (
             <>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="이름"
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4CD6B4] focus:bg-white"
-                required
-              />
-              <input
-                type="text"
-                value={phoneLast4}
-                onChange={(e) => setPhoneLast4(e.target.value)}
-                placeholder="전화번호 뒤 4자리"
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4CD6B4] focus:bg-white"
-                required
-              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  이름
+                </label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="이름 입력"
+                  className="w-full px-4 py-3 rounded-xl bg-gray-50/50 text-gray-800 focus:ring-2 focus:ring-[#4CD6B4] outline-none"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  전화번호 뒤 4자리
+                </label>
+                <input
+                  type="text"
+                  value={phoneLast4}
+                  onChange={(e) => setPhoneLast4(e.target.value)}
+                  placeholder="0000"
+                  className="w-full px-4 py-3 rounded-xl bg-gray-50/50 text-gray-800 focus:ring-2 focus:ring-[#4CD6B4] outline-none"
+                  required
+                />
+              </div>
             </>
           )}
 
           <button
             type="submit"
-            className="w-full py-3 bg-[#4CD6B4] text-white font-medium rounded-lg hover:bg-[#3bc0a0] transition"
+            disabled={isLoading}
+            className="w-full bg-[#4CD6B4] text-white py-3 rounded-xl font-medium shadow-md hover:bg-[#3bc0a0] transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-[#4CD6B4]"
           >
-            로그인
+            {isLoading ? (
+              <span className="flex items-center justify-center">
+                <i className="fas fa-circle-notch fa-spin mr-2"></i>
+                로그인 중...
+              </span>
+            ) : (
+              "로그인"
+            )}
           </button>
         </form>
+
+        <p className="text-center text-gray-500 text-xs mt-8">
+          © 2025 TODO-DOTO. All rights reserved.
+        </p>
       </div>
     </div>
   );
