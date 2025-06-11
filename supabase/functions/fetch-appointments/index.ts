@@ -23,128 +23,139 @@ function parseCommandText(text: string) {
 }
 
 serve(async (req) => {
-  const today = new Date();
-  const todayStr = today.toISOString().split("T")[0];
+  try {
+    const today = new Date();
+    const todayStr = today.toISOString().split("T")[0];
 
-  const form = await req.formData();
-  const text = form.get("text") as string;
-  const { mode, trainerName } = parseCommandText(text);
+    // ✅ Slack request body는 form-urlencoded임
+    const rawBody = await req.text();
+    const params = new URLSearchParams(rawBody);
+    const text = params.get("text") ?? "";
+    const { mode, trainerName } = parseCommandText(text);
 
-  let dateFilter = {};
-  if (mode === "past") {
-    const sevenDaysAgo = new Date(today);
-    sevenDaysAgo.setDate(today.getDate() - 7);
-    const from = sevenDaysAgo.toISOString().split("T")[0];
-    dateFilter = { gte: from, lte: todayStr };
-  } else {
-    dateFilter = { gte: todayStr };
-  }
+    let dateFilter: { gte: string; lte?: string } = { gte: todayStr };
+    if (mode === "past") {
+      const sevenDaysAgo = new Date(today);
+      sevenDaysAgo.setDate(today.getDate() - 7);
+      dateFilter = {
+        gte: sevenDaysAgo.toISOString().split("T")[0],
+        lte: todayStr,
+      };
+    }
 
-  // 쿼리: appointments → members(name, trainer_id, trainers(name))
-  let query = supabase
-    .from("appointments")
-    .select(`
-      id,
-      appointment_date,
-      appointment_time,
-      type,
-      members(name, trainer_id, trainers(name))
-    `)
-    .eq("type", "personal")
-    .gte("appointment_date", dateFilter.gte)
-    .order("appointment_date", { ascending: true })
-    .limit(30);
+    let query = supabase
+      .from("appointments")
+      .select(`
+        id,
+        appointment_date,
+        appointment_time,
+        type,
+        members(name, trainer_id, trainers(name))
+      `)
+      .eq("type", "personal")
+      .gte("appointment_date", dateFilter.gte)
+      .order("appointment_date", { ascending: true })
+      .limit(30);
 
-  if ((dateFilter as any).lte) {
-    query = query.lte("appointment_date", (dateFilter as any).lte);
-  }
+    if (dateFilter.lte) {
+      query = query.lte("appointment_date", dateFilter.lte);
+    }
 
-  // 트레이너 이름 검색: 담당 트레이너만! (trainer_id null 제외)
-  if (trainerName) {
-    query = query
-      .not("members.trainer_id", "is", null)
-      .eq("members.trainers.name", trainerName);
-    // 만약 부분 일치로 하고 싶다면 .ilike("members.trainers.name", `%${trainerName}%`)
-  }
+    if (trainerName) {
+      query = query
+        .not("members.trainer_id", "is", null)
+        .eq("members.trainers.name", trainerName);
+    }
 
-  const { data, error } = await query;
+    const { data, error } = await query;
 
-  if (error) {
-    return new Response(
-      JSON.stringify({
-        response_type: "ephemeral",
-        text: `❌ DB 조회 오류: ${error.message}`,
-      }),
-      { headers: { "Content-Type": "application/json" }, status: 200 }
-    );
-  }
+    if (error) {
+      return new Response(
+        JSON.stringify({
+          response_type: "ephemeral",
+          text: `❌ DB 조회 오류: ${error.message}`,
+        }),
+        { headers: { "Content-Type": "application/json" }, status: 200 }
+      );
+    }
 
-  if (!data || data.length === 0) {
+    if (!data || data.length === 0) {
+      return new Response(
+        JSON.stringify({
+          response_type: "in_channel",
+          blocks: [
+            {
+              type: "section",
+              text: {
+                type: "mrkdwn",
+                text:
+                  (mode === "past"
+                    ? "🕓 지난 7일간"
+                    : "📅 오늘 이후") +
+                  (trainerName
+                    ? ` *${trainerName}* 트레이너 회원의`
+                    : " 전체") +
+                  "\n*개인 운동 예약이 없습니다.*\n\n:zzz:",
+              },
+            },
+          ],
+        }),
+        { headers: { "Content-Type": "application/json" }, status: 200 }
+      );
+    }
+
+    const blocks: any[] = [
+      {
+        type: "header",
+        text: {
+          type: "plain_text",
+          text:
+            "📅 개인 운동 예약 현황" +
+            (mode === "past" ? " (지난 7일간" : " (오늘~미래") +
+            (trainerName ? `, 트레이너: ${trainerName}` : "") +
+            ")",
+          emoji: true,
+        },
+      },
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: "*이름 | 담당 트레이너 | 날짜(요일) | 예약 시간*",
+        },
+      },
+      { type: "divider" },
+    ];
+
+    data.forEach((a: any) => {
+      const memberName = a.members?.name ?? "-";
+      const trainer = a.members?.trainers?.name ?? "-";
+      const dayAndDate = getDayAndDate(a.appointment_date);
+      const time = a.appointment_time?.slice(0, 5) ?? "-";
+      blocks.push({
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `*${memberName}* | *${trainer}* | ${dayAndDate} | *${time}*`,
+        },
+      });
+    });
+
     return new Response(
       JSON.stringify({
         response_type: "in_channel",
-        blocks: [
-          {
-            type: "section",
-            text: {
-              type: "mrkdwn",
-              text:
-                (mode === "past"
-                  ? "🕓 지난 7일간"
-                  : "오늘 이후") +
-                (trainerName ? ` *${trainerName}* 트레이너 회원의` : " 전체") +
-                "\n*개인 운동 예약이 없습니다.*\n\n:zzz:",
-            },
-          },
-        ],
+        blocks,
+      }),
+      { headers: { "Content-Type": "application/json" }, status: 200 }
+    );
+  } catch (err) {
+    const reason = (err as Error).message ?? "알 수 없는 오류";
+    return new Response(
+      JSON.stringify({
+        response_type: "ephemeral",
+        text: `${reason} 오류가 발생해 */예약현황*에 실패했습니다.`,
       }),
       { headers: { "Content-Type": "application/json" }, status: 200 }
     );
   }
-
-  // Block Kit 헤더
-  const blocks: any[] = [
-    {
-      type: "header",
-      text: {
-        type: "plain_text",
-        text:
-          "📅 개인 운동 예약 현황" +
-          (mode === "past" ? " (지난 7일간" : " (오늘~미래") +
-          (trainerName ? `, 트레이너: ${trainerName}` : "") +
-          ")",
-        emoji: true,
-      },
-    },
-    {
-      type: "section",
-      text: {
-        type: "mrkdwn",
-        text: "*이름 | 담당 트레이너 | 날짜(요일) | 예약 시간*",
-      },
-    },
-    { type: "divider" },
-  ];
-
-  data.forEach((a: any) => {
-    const memberName = a.members?.name ?? "-";
-    const trainer = a.members?.trainers?.name ?? "-";
-    const dayAndDate = getDayAndDate(a.appointment_date);
-    const time = a.appointment_time?.slice(0, 5) ?? "-";
-    blocks.push({
-      type: "section",
-      text: {
-        type: "mrkdwn",
-        text: `*${memberName}* | *${trainer}* | ${dayAndDate} | *${time}*`,
-      },
-    });
-  });
-
-  return new Response(
-    JSON.stringify({
-      response_type: "in_channel",
-      blocks,
-    }),
-    { headers: { "Content-Type": "application/json" }, status: 200 }
-  );
 });

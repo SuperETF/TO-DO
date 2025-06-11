@@ -21,11 +21,13 @@ interface MemberRecommendation {
   recommendation_id: string;
   order: number;
   description?: string;
-  exercise_videos: {
-    title: string;
-    video_url: string;
-    category?: string;
-    tags?: string[];
+  trainer_recommendations: {
+    exercise_videos: {
+      title: string;
+      video_url: string;
+      category?: string;
+      tags?: string[];
+    };
   };
 }
 
@@ -54,7 +56,6 @@ function SortableItem({
       style={style}
       className="bg-gray-50 rounded-lg p-3 mb-2 shadow-sm"
     >
-      {/* 드래그 핸들 */}
       <div
         {...attributes}
         {...listeners}
@@ -63,30 +64,27 @@ function SortableItem({
         ☰ 드래그
       </div>
 
-      {/* 제목 및 영상 */}
-      <div className="text-sm font-medium mb-1">{rec.exercise_videos.title}</div>
+      <div className="text-sm font-medium mb-1">
+        {rec.trainer_recommendations.exercise_videos.title}
+      </div>
       <iframe
-        src={rec.exercise_videos.video_url}
+        src={rec.trainer_recommendations.exercise_videos.video_url}
         className="w-full aspect-video rounded mb-2"
         allow="autoplay; fullscreen"
         allowFullScreen
-        title={rec.exercise_videos.title}
+        title={rec.trainer_recommendations.exercise_videos.title}
       />
 
-      {/* 설명 */}
       {rec.description && (
-        <div className="text-xs text-gray-700 mb-2 whitespace-pre-wrap">{rec.description}</div>
+        <div className="text-xs text-gray-700 mb-2 whitespace-pre-wrap">
+          {rec.description}
+        </div>
       )}
 
-      {/* 상태 + 액션 버튼 */}
       <div className="text-xs text-gray-500 flex justify-between items-center">
-        <span>#{rec.exercise_videos.category}</span>
+        <span>#{rec.trainer_recommendations.exercise_videos.category}</span>
         <span className="flex gap-2 items-center">
-          {/* 상태 구분 */}
-          {!rec.is_completed && (
-            <span className="text-gray-400">⏳ 미완료</span>
-          )}
-
+          {!rec.is_completed && <span className="text-gray-400">⏳ 미완료</span>}
           {rec.is_completed && !rec.trainer_confirmed && (
             <>
               <span className="text-green-600">✅ 완료됨</span>
@@ -101,8 +99,6 @@ function SortableItem({
               </button>
             </>
           )}
-
-          {/* 항상 표시되는 버튼 */}
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -126,7 +122,6 @@ function SortableItem({
     </div>
   );
 }
-
 
 function DescriptionEditModal({
   rec,
@@ -171,6 +166,7 @@ function DescriptionEditModal({
     </div>
   );
 }
+
 export default function TrainerRecommendationInputSection({ memberId }: Props) {
   const [recommendations, setRecommendations] = useState<MemberRecommendation[]>([]);
   const [editingRec, setEditingRec] = useState<MemberRecommendation | null>(null);
@@ -186,16 +182,40 @@ export default function TrainerRecommendationInputSection({ memberId }: Props) {
 
   const fetchRecommendations = async () => {
     setLoading(true);
-    const { data } = await supabase
+  
+    const { data, error } = await supabase
       .from("member_recommendations")
-      .select("id, assigned_at, is_completed, trainer_confirmed, recommendation_id, order, description, exercise_videos(title, video_url, category, tags)")
+      .select(`
+        id,
+        assigned_at,
+        is_completed,
+        trainer_confirmed,
+        recommendation_id,
+        order,
+        description,
+        trainer_recommendations:recommendation_id (
+          exercise_videos:exercise_video_id (
+            title,
+            video_url,
+            category,
+            tags
+          )
+        )
+      `)
       .eq("member_id", memberId)
       .or("trainer_confirmed.is.null,trainer_confirmed.eq.false")
       .order("order", { ascending: true });
-
+  
+    if (error) {
+      console.error("[❌ fetchRecommendations ERROR]", error);
+    } else {
+      console.log("[✅ fetchRecommendations DATA]", data);
+    }
+  
     setRecommendations((data ?? []) as unknown as MemberRecommendation[]);
     setLoading(false);
   };
+  
 
   const fetchAllVideos = async () => {
     const { data } = await supabase
@@ -204,19 +224,51 @@ export default function TrainerRecommendationInputSection({ memberId }: Props) {
     if (data) setAllVideos(data);
   };
 
-  const handleAssign = async (videoId: string) => {
-    if (assignedIds.has(videoId)) {
-      setStatus("⚠️ 이미 추천한 영상입니다.");
+  const handleAssign = async (trainerRecommendationId: string) => {
+    console.log("[Assign] member_id:", memberId, "recommendation_id:", trainerRecommendationId);
+
+    const { data: trainerRec, error: trainerRecError } = await supabase
+      .from("trainer_recommendations")
+      .select("id, title")
+      .eq("id", trainerRecommendationId)
+      .single();
+
+    if (trainerRecError || !trainerRec) {
+      const { data: newTemplate, error: newTemplateError } = await supabase
+        .from("trainer_recommendations")
+        .insert({
+          exercise_video_id: trainerRecommendationId,
+          title: "[자동생성] 추천 템플릿",
+        })
+        .select()
+        .single();
+
+      if (newTemplateError || !newTemplate) {
+        setStatus("❌ 추천 템플릿 생성에 실패했습니다.");
+        return;
+      }
+
+      trainerRecommendationId = newTemplate.id;
+    }
+
+    if (assignedIds.has(trainerRecommendationId)) {
+      setStatus("⚠️ 이미 이 추천이 할당되어 있습니다.");
       return;
     }
+
     const maxOrder = Math.max(...recommendations.map((r) => r.order || 0), 0);
+
     const { error } = await supabase.from("member_recommendations").insert({
       member_id: memberId,
-      recommendation_id: videoId,
+      recommendation_id: trainerRecommendationId,
       order: maxOrder + 1,
     });
-    if (!error) {
-      setStatus("✅ 영상이 성공적으로 배정되었습니다.");
+
+    if (error) {
+      setStatus(`❌ 오류: ${error.message}`);
+      console.error("[Assign] INSERT ERROR:", error);
+    } else {
+      setStatus("✅ 추천이 성공적으로 배정되었습니다.");
       setShowModal(false);
       fetchRecommendations();
     }
