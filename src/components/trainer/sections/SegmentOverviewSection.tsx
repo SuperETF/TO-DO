@@ -59,7 +59,40 @@ export default function SegmentOverviewSection() {
   };
 
   return (
-    <div className="pt-20 pb-24 px-4">
+    <div className="w-full max-w-[890px] mx-auto pt-6 pb-24 px-4">
+      <div className="bg-white rounded-lg shadow-md p-4 mb-4">
+        <h2 className="text-lg font-semibold mb-4">등급별 통계</h2>
+        <div className="grid grid-cols-3 gap-4">
+          {["A", "B", "C"].map((seg) => (
+            <div
+              key={seg}
+              className={`p-4 rounded-lg border ${
+                seg === "A"
+                  ? "bg-green-50 border-green-100"
+                  : seg === "B"
+                  ? "bg-yellow-50 border-yellow-100"
+                  : "bg-red-50 border-red-100"
+              }`}
+            >
+              <div
+                className={`font-semibold ${
+                  seg === "A"
+                    ? "text-green-600"
+                    : seg === "B"
+                    ? "text-yellow-600"
+                    : "text-red-600"
+                }`}
+              >
+                {seg}
+              </div>
+              <div className="text-2xl font-bold mt-1">
+                {members.filter((m) => m.segment === seg).length}명
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="bg-white rounded-lg shadow-md p-4 mb-4">
         <h2 className="text-lg font-semibold mb-4">회원 등급 관리</h2>
         <div className="flex space-x-2 mb-6">
@@ -118,39 +151,6 @@ export default function SegmentOverviewSection() {
                 </div>
               </div>
             ))}
-        </div>
-      </div>
-
-      <div className="bg-white rounded-lg shadow-md p-4">
-        <h2 className="text-lg font-semibold mb-4">등급별 통계</h2>
-        <div className="grid grid-cols-3 gap-4">
-          {["A", "B", "C"].map((seg) => (
-            <div
-              key={seg}
-              className={`p-4 rounded-lg border ${
-                seg === "A"
-                  ? "bg-green-50 border-green-100"
-                  : seg === "B"
-                  ? "bg-yellow-50 border-yellow-100"
-                  : "bg-red-50 border-red-100"
-              }`}
-            >
-              <div
-                className={`font-semibold ${
-                  seg === "A"
-                    ? "text-green-600"
-                    : seg === "B"
-                    ? "text-yellow-600"
-                    : "text-red-600"
-                }`}
-              >
-                {seg}
-              </div>
-              <div className="text-2xl font-bold mt-1">
-                {members.filter((m) => m.segment === seg).length}명
-              </div>
-            </div>
-          ))}
         </div>
       </div>
 

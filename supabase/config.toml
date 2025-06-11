@@ -1,2 +1,3 @@
-# 완전히 이 항목을 지우거나 아래처럼 최소로 유지
-[functions]
+# config.toml
+[api]
+jwt_secret = "my-local-secret"
