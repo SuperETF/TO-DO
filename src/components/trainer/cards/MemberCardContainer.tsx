@@ -1,6 +1,5 @@
-// src/components/trainer/cards/MemberCardContainer.tsx
-
-import { useRef, useState } from "react";
+// 최종 리팩토링된 MemberCardContainer 전체 코드
+import { useRef, useState, useMemo, type DragEvent, type SetStateAction, useEffect } from "react";
 import ConditionSection from "../sections/ConditionSection";
 import WorkoutSection from "../sections/WorkoutSection";
 import BodyCompositionSection from "../sections/BodyCompositionSection";
@@ -10,140 +9,387 @@ import MissionSection from "../sections/MissionSection";
 import TrainerNoteSection from "../sections/TrainerNoteSection";
 import PainLogManagerSection from "../sections/PainLogManagerSection";
 import TrainerRecommendationInputSection from "../sections/TrainerRecommendationInputSection";
+import { supabase } from "../../../lib/supabaseClient";
+
+const Placeholder = () => (
+  <div className="text-gray-400 py-3 text-center">준비 중인 기능입니다</div>
+);
+
+const INITIAL_SECTIONS = [
+  { key: "condition", title: "컨디션 로그", enabled: true, Component: ConditionSection, hasOnSaved: true },
+  { key: "workout", title: "운동 로그", enabled: true, Component: WorkoutSection, hasOnSaved: true },
+  { key: "pain", title: "통증 로그", enabled: false, Component: PainLogManagerSection },
+  { key: "diet", title: "식단 관리", enabled: true, Component: Placeholder },
+  { key: "weight", title: "체중 기록", enabled: true, Component: BodyCompositionSection },
+  { key: "sleep", title: "수면 분석", enabled: false, Component: Placeholder },
+  { key: "goal", title: "목표 설정", enabled: true, Component: MissionSection },
+  { key: "feedback", title: "피드백", enabled: true, Component: FeedbackSection },
+  { key: "appointment", title: "예약 일정", enabled: true, Component: AppointmentSection },
+  { key: "note", title: "트레이너 메모", enabled: true, Component: TrainerNoteSection, hasOnSaved: true },
+  { key: "recommend", title: "추천 운동 입력", enabled: true, Component: TrainerRecommendationInputSection },
+];
 
 interface Member {
   id: string;
   name: string;
-  phone_last4: string;
   created_at?: string;
+  program_type?: "membership" | "lesson";
+  start_date?: string;
+  membership_months?: number;
+  lesson_total_count?: number;
+  lesson_used_count?: number;
 }
 
-interface Props {
-  member: Member;
-}
-
-export default function MemberCardContainer({ member }: Props) {
+export default function MemberCardContainer({ member }: { member: Member }) {
+  const [sections, setSections] = useState(INITIAL_SECTIONS);
+  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [toast, setToast] = useState("");
-  const toastTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toastTimeout = useRef<NodeJS.Timeout | null>(null);
+  const [isEditingInfo, setIsEditingInfo] = useState(false);
+  const [editForm, setEditForm] = useState({
+    goal: "",
+    age: "",
+    height: "",
+    weight: "",
+    lesson_total_count: "",
+    body_fat_percent: "",
+    muscle_mass: ""
+  });
+  const [showDashboard, setShowDashboard] = useState(false); // ✅ 대시보드 보기 상태
 
-  const toggleSection = (section: string) => {
-    setActiveSection((prev) => (prev === section ? null : section));
+  const today = useMemo(() => new Date(), []);
+
+  useEffect(() => {
+    const fetchLatestBodyComposition = async () => {
+      const { data } = await supabase
+        .from("body_compositions")
+        .select("weight, body_fat_percent, muscle_mass")
+        .eq("member_id", member.id)
+        .order("date", { ascending: false })
+        .limit(1)
+        .single();
+  
+      if (data) {
+        setEditForm((prev) => ({
+          ...prev,
+          weight: data.weight?.toString() ?? "",
+          body_fat_percent: data.body_fat_percent?.toString() ?? "",
+          muscle_mass: data.muscle_mass?.toString() ?? "",
+        }));
+      }
+    };
+  
+    fetchLatestBodyComposition();
+  }, [member.id]);
+  
+  // ✅ 최신 goal, 나이, 키 등도 함께 불러오기 위한 useEffect 추가
+  useEffect(() => {
+    const fetchMemberMeta = async () => {
+      const { data } = await supabase
+        .from("members")
+        .select("goal, age, height, weight, lesson_total_count")
+        .eq("id", member.id)
+        .single();
+  
+      if (data) {
+        setEditForm((prev) => ({
+          ...prev,
+          goal: data.goal ?? "",
+          age: data.age?.toString() ?? "",
+          height: data.height?.toString() ?? "",
+          weight: data.weight?.toString() ?? "",
+          lesson_total_count: data.lesson_total_count?.toString() ?? "",
+        }));
+      }
+    };
+  
+    fetchMemberMeta();
+  }, [member.id]);
+  
+  const registrationDate = useMemo(() => new Date(member.start_date ?? member.created_at ?? ""), [member]);
+  
+  const membershipEndDate = useMemo(() => {
+    if (member.program_type === "membership" && member.membership_months) {
+      const end = new Date(registrationDate);
+      end.setMonth(end.getMonth() + member.membership_months);
+      return end;
+    }
+    return null;
+  }, [member, registrationDate]);
+  
+  const membershipRemainingDays = useMemo(() => {
+    if (membershipEndDate) {
+      return Math.max(0, Math.ceil((membershipEndDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
+    }
+    return null;
+  }, [membershipEndDate, today]);
+  
+  const diffDays = useMemo(() => Math.ceil((today.getTime() - registrationDate.getTime()) / (1000 * 60 * 60 * 24)), [registrationDate, today]);
+  
+  const remainingLessons = useMemo(() => {
+    if (member.program_type === "lesson" && typeof member.lesson_total_count === "number" && typeof member.lesson_used_count === "number") {
+      return Math.max(0, member.lesson_total_count - member.lesson_used_count);
+    }
+    return null;
+  }, [member]);
+  
+  const handleDragStart = (idx: number) => setDraggedIdx(idx);
+  const handleDragOver = (e: DragEvent<HTMLDivElement>, idx: number) => {
+    e.preventDefault();
+    if (draggedIdx === null || draggedIdx === idx) return;
+    const items = [...sections];
+    const [dragged] = items.splice(draggedIdx, 1);
+    items.splice(idx, 0, dragged);
+    setSections(items);
+    setDraggedIdx(idx);
   };
-
-  const handleSave = (message: string) => {
-    setToast(message);
+  const handleDragEnd = () => {
+    setDraggedIdx(null);
+    showToast("메뉴 순서가 저장되었습니다");
+  };
+  const toggleSectionStatus = (key: string) => {
+    setSections((prev) =>
+      prev.map((item) =>
+        item.key === key ? { ...item, enabled: !item.enabled } : item
+      )
+    );
+    const item = sections.find((item) => item.key === key);
+    if (item) {
+      showToast(`${item.title}이(가) ${!item.enabled ? "활성화" : "비활성화"}되었습니다`);
+    }
+  };
+  const showToast = (msg: SetStateAction<string>) => {
+    setToast(msg);
     if (toastTimeout.current) clearTimeout(toastTimeout.current);
     toastTimeout.current = setTimeout(() => setToast(""), 2500);
   };
+  
+  const handleSaveMemberInfo = async () => {
+    console.log("🟡 저장 시도 중: 업데이트 내용:", editForm);
+    console.log("🟡 대상 멤버 ID:", member.id);
+    const updates = {
+      goal: editForm.goal,
+      age: Number(editForm.age),
+      height: Number(editForm.height),
+      weight: Number(editForm.weight),
+      ...(member.program_type === "lesson" && editForm.lesson_total_count && {
+        lesson_total_count: Number(editForm.lesson_total_count),
+      }),
+    };
+    const { data, error } = await supabase
+      .from("members")
+      .update(updates)
+      .eq("id", member.id);
+  
+    if (error) {
+      console.error("🔴 Supabase 업데이트 실패:", error);
+    } else {
+      console.log("🟢 Supabase 업데이트 성공:", data);
+      if (error) {
+        showToast("저장 실패: " + (error as any).message);
+      } else {
+        showToast("회원 정보가 저장되었습니다");
+        setIsEditingInfo(false);
+      }
+    }
+  };
+  
+  const handleSectionOpen = (key: string | null) => setActiveSection((prev) => (prev === key ? null : key));
 
   return (
-    <div
-      id={`member-${member.id}`}
-      className="rounded-xl bg-white shadow-lg overflow-y-auto touch-pan-y scrollbar-none mt-4 mb-8"
-      style={{ overscrollBehaviorY: "contain" }}
-    >
-      {/* 헤더 */}
-      <div className="bg-gradient-to-r from-[#6C4CF1] to-[#A083F7] text-white p-4 rounded-t-xl">
-  <div className="flex justify-between items-start">
-    {/* 좌측: 회원 정보 */}
-    <div>
-      <h2 className="text-lg font-bold">{member.name}</h2>
-      <p className="text-sm">전화번호 뒷자리: {member.phone_last4}</p>
-      {member.created_at && (
-        <p className="text-xs text-white/80 mt-1">
-          가입일: {new Date(member.created_at).toLocaleDateString("ko-KR")}
+    <div className="bg-gray-50 min-h-screen py-6 px-4">
+      <div className="max-w-3xl mx-auto">
+        <div className="bg-white rounded-xl shadow overflow-hidden mb-6">
+          <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-5 rounded-t-xl flex justify-between items-start">
+            <div>
+              <h2 className="text-xl font-bold">{member.name}</h2>
+              <div className="flex items-center text-sm mt-1 space-x-2">
+                <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs">{member.program_type === "lesson" ? "레슨권" : "회원권"}</span>
+                <span>시작일: {registrationDate.toLocaleDateString("ko-KR")}</span>
+              </div>
+            </div>
+            <button onClick={() => setIsEditingInfo(!isEditingInfo)} className="bg-white/20 p-2 rounded-md border border-white hover:bg-white/30 transition">
+              <i className="fas fa-pen text-white"></i>
+            </button>
+          </div>
+
+          {isEditingInfo ? (
+            <div className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">목표</label>
+                <input type="text" className="w-full px-3 py-2 border rounded-lg text-sm" placeholder="예: 체중 감량 및 근력 향상" value={editForm.goal} onChange={(e) => setEditForm({ ...editForm, goal: e.target.value })} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">나이</label>
+                  <input type="number" className="w-full px-3 py-2 border rounded-lg text-sm" value={editForm.age} onChange={(e) => setEditForm({ ...editForm, age: e.target.value })} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">키</label>
+                  <input type="number" className="w-full px-3 py-2 border rounded-lg text-sm" value={editForm.height} onChange={(e) => setEditForm({ ...editForm, height: e.target.value })} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">체중</label>
+                  <input type="number" className="w-full px-3 py-2 border rounded-lg text-sm" value={editForm.weight} onChange={(e) => setEditForm({ ...editForm, weight: e.target.value })} />
+                </div>
+
+        {member.program_type === "lesson" && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">총 레슨 횟수</label>
+                    <input type="number" className="w-full px-3 py-2 border rounded-lg text-sm" value={editForm.lesson_total_count} onChange={(e) => setEditForm({ ...editForm, lesson_total_count: e.target.value })} />
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-end">
+                <button onClick={handleSaveMemberInfo} className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm">
+                저장하기
+              </button>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-4 p-4">
+                <div className="col-span-2 bg-yellow-50 rounded-lg text-center py-3">
+    <div className="text-sm text-yellow-600">목표</div>
+    <div className="text-base font-semibold text-yellow-800">
+      {editForm.goal || "설정된 목표가 없습니다"}
+    </div>
+  </div>
+              <div className="bg-gray-100 rounded-lg text-center py-3">
+                <div className="text-sm text-gray-500">체지방률</div>
+                <div className="text-lg font-bold text-gray-800">{editForm.body_fat_percent ? `${editForm.body_fat_percent}%` : "-"}</div>
+              </div>
+              <div className="bg-gray-100 rounded-lg text-center py-3">
+                <div className="text-sm text-gray-500">골격근량</div>
+                <div className="text-lg font-bold text-gray-800">{editForm.muscle_mass ? `${editForm.muscle_mass}kg` : "-"}</div>
+              </div>
+              {member.program_type === "membership" ? (
+                <>
+                  <div className="bg-purple-50 rounded-lg text-center py-3">
+                    <div className="text-sm text-purple-600">남은 일수</div>
+                    <div className="text-2xl font-bold text-purple-700">{membershipRemainingDays ?? "-"}일</div>
+                  </div>
+                  <div className="bg-indigo-50 rounded-lg text-center py-3">
+                    <div className="text-sm text-indigo-600">등록 기간</div>
+                    <div className="text-2xl font-bold text-indigo-700">{diffDays}일</div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="bg-purple-50 rounded-lg text-center py-3">
+                    <div className="text-sm text-purple-600">남은 레슨</div>
+                    <div className="text-2xl font-bold text-purple-700">{remainingLessons ?? "-"}회</div>
+                  </div>
+                  <div className="bg-indigo-50 rounded-lg text-center py-3">
+                    <div className="text-sm text-indigo-600">총 레슨</div>
+                    <div className="text-2xl font-bold text-indigo-700">{member.lesson_total_count ?? "-"}회</div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* 메뉴 관리 */}
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-lg font-semibold text-gray-800">메뉴 관리</h3>
+          <button className="text-sm px-3 py-1 bg-purple-600 text-white rounded-md">
+            + 메뉴 추가
+          </button>
+        </div>
+        <p className="text-sm text-gray-500 mb-4">
+          드래그하여 순서를 변경하거나 토글을 사용하여 메뉴를 활성화/비활성화할 수 있습니다.
         </p>
-      )}
+
+        {sections.map((item, idx) => {
+          const Comp = item.Component;
+          const isOpen = activeSection === item.key;
+          return (
+            <div
+              key={item.key}
+              draggable
+              onDragStart={() => handleDragStart(idx)}
+              onDragOver={(e) => handleDragOver(e, idx)}
+              onDragEnd={handleDragEnd}
+              className={`bg-white rounded-xl shadow-sm mb-3 border-l-4 transition-all duration-300 ${
+                item.enabled ? "border-purple-500" : "border-gray-200 opacity-50"
+              }`}
+            >
+              <div className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="text-gray-400 cursor-move">
+                    <i className="fas fa-grip-lines"></i>
+                  </div>
+                  <span className="font-medium text-gray-800">{item.title}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => handleSectionOpen(item.key)} className="text-gray-500">
+                    <i className={`fas fa-chevron-${isOpen ? "up" : "down"}`}></i>
+                  </button>
+                  <label className="inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={item.enabled}
+                      onChange={() => toggleSectionStatus(item.key)}
+                    />
+                    <div className="w-10 h-6 bg-gray-200 rounded-full peer peer-checked:bg-purple-600 relative">
+                      <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-all ${item.enabled ? "translate-x-4" : ""}`}></div>
+                    </div>
+                  </label>
+                </div>
+              </div>
+              {isOpen && item.enabled && (
+                <div className="px-4 pb-4 transition-all duration-300 ease-in-out">
+                  {item.hasOnSaved ? (
+                    <Comp memberId={member.id} onSaved={() => showToast(`${item.title} 저장 완료`)} />
+                  ) : (
+                    <Comp memberId={member.id} />
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+{showDashboard && (
+  <div className="mt-6 bg-white rounded-xl shadow-sm p-4 space-y-4">
+    {/* 닫기 버튼 상단으로 이동 */}
+    <div className="flex justify-end">
+      <button
+        onClick={() => setShowDashboard(false)}
+        className="text-xs text-gray-500 hover:text-gray-700 transition"
+      >
+        <i className="fas fa-times mr-1" /> 대시보드 닫기
+      </button>
     </div>
 
-    {/* 우측: 대시보드 확인 버튼 */}
-    <button
-      onClick={() => window.open(`/member-dashboard/${member.id}`, "_blank")}
-      className="flex items-center space-x-1 px-3 py-1.5 rounded-md text-sm bg-white/20 text-white hover:bg-white/30 transition-all backdrop-blur-md shadow-sm"
-    >
-      <i className="fas fa-external-link-alt text-xs"></i>
-      <span className="font-medium">대시보드 확인</span>
-    </button>
+
+    {/* 대시보드 iframe */}
+    <div className="rounded-xl overflow-hidden border shadow">
+      <iframe
+        src={`/member-dashboard/${member.id}`}
+        title="회원 대시보드"
+        className="w-full h-[600px] border-0"
+      ></iframe>
+    </div>
   </div>
+)}
+
+
+<div className="text-center text-sm text-gray-500 mt-4 cursor-pointer" onClick={() => setShowDashboard((v) => !v)}>
+  {showDashboard ? "대시보드 닫기" : "회원 대시보드 미리보기"}
 </div>
 
-      {/* 아코디언 섹션들 */}
-      <div className="space-y-4 p-4">
-        <AccordionItem title="오늘의 컨디션" isOpen={activeSection === "condition"} onToggle={() => toggleSection("condition")}>
-          <ConditionSection memberId={member.id} onSaved={() => handleSave("컨디션 저장 완료")} />
-        </AccordionItem>
-
-        <AccordionItem title="운동 기록" isOpen={activeSection === "workout"} onToggle={() => toggleSection("workout")}>
-          <WorkoutSection memberId={member.id} onSaved={() => handleSave("운동 기록 저장 완료")} />
-        </AccordionItem>
-
-        <AccordionItem title="체성분 분석" isOpen={activeSection === "body"} onToggle={() => toggleSection("body")}>
-          <BodyCompositionSection memberId={member.id} />
-        </AccordionItem>
-
-        <AccordionItem title="피드백" isOpen={activeSection === "feedback"} onToggle={() => toggleSection("feedback")}>
-          <FeedbackSection memberId={member.id} />
-        </AccordionItem>
-
-        <AccordionItem title="예약 일정" isOpen={activeSection === "appointment"} onToggle={() => toggleSection("appointment")}>
-          <AppointmentSection memberId={member.id} />
-        </AccordionItem>
-
-        <AccordionItem title="이달의 미션" isOpen={activeSection === "mission"} onToggle={() => toggleSection("mission")}>
-          <MissionSection memberId={member.id} />
-        </AccordionItem>
-
-        <AccordionItem title="트레이너 메모" isOpen={activeSection === "note"} onToggle={() => toggleSection("note")}>
-          <TrainerNoteSection memberId={member.id} onSaved={() => handleSave("메모 저장 완료")} />
-        </AccordionItem>
-
-        <AccordionItem title="통증 점수 입력 (날짜별)" isOpen={activeSection === "pain"} onToggle={() => toggleSection("pain")}>
-          <PainLogManagerSection memberId={member.id} />
-        </AccordionItem>
-
-        <AccordionItem title="추천 운동 입력" isOpen={activeSection === "recommend"} onToggle={() => toggleSection("recommend")}>
-          <TrainerRecommendationInputSection memberId={member.id} />
-        </AccordionItem>
       </div>
 
       {/* 토스트 메시지 */}
-      {toast && (
-        <div className="px-4 pb-4">
-          <div className="p-3 text-center bg-green-100 text-green-700 text-sm font-medium rounded-lg shadow">
-            {toast}
-          </div>
+      <div className={`fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded-lg shadow transition-opacity duration-300 ${toast ? "opacity-100" : "opacity-0 pointer-events-none"}`} style={{ zIndex: 9999 }}>
+        <div className="flex items-center">
+          <i className="fas fa-check-circle mr-2 text-green-400"></i>
+          <span className="text-sm">{toast}</span>
         </div>
-      )}
-    </div>
-  );
-}
-
-function AccordionItem({
-  title,
-  isOpen,
-  onToggle,
-  children,
-}: {
-  title: string;
-  isOpen: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <div
-      className={`rounded-lg bg-white border transition shadow-sm ${
-        isOpen ? "border-indigo-500" : "border-gray-200"
-      }`}
-    >
-      <button
-        onClick={onToggle}
-        className="w-full flex justify-between items-center px-5 py-4 text-sm sm:text-base font-semibold text-gray-800 hover:bg-gray-50 transition"
-      >
-        <span>{title}</span>
-        <i className={`fas ${isOpen ? "fa-chevron-up" : "fa-chevron-down"} text-gray-500`}></i>
-      </button>
-      {isOpen && <div className="px-5 py-4 pt-0 bg-white">{children}</div>}
+      </div>
     </div>
   );
 }
