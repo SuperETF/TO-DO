@@ -16,7 +16,7 @@ export function useAchievement(memberId: string) {
 
   const fetch = async () => {
     const { data, error } = await supabase
-      .from("v_member_recommendations")
+      .from("member_achievement_view")
       .select("*")
       .eq("member_id", memberId)
       .single();

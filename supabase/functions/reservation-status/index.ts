@@ -1,8 +1,14 @@
 import { serve } from "https://deno.land/std/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 
-const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+const supabaseUrl = Deno.env.get("SUPABASE_URL");
+const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error("❌ Supabase 환경변수가 설정되지 않았습니다.");
+  throw new Error("Supabase 환경변수가 설정되지 않았습니다.");
+}
+
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 function getDayAndDate(dateString: string) {
@@ -24,10 +30,11 @@ function parseCommandText(text: string) {
 
 serve(async (req) => {
   try {
+    console.log("✅ Slack 호출 도착");
+
     const today = new Date();
     const todayStr = today.toISOString().split("T")[0];
 
-    // ✅ Slack request body는 form-urlencoded임
     const rawBody = await req.text();
     const params = new URLSearchParams(rawBody);
     const text = params.get("text") ?? "";
@@ -43,6 +50,7 @@ serve(async (req) => {
       };
     }
 
+    // ✅ appointments → members → trainers (join)
     let query = supabase
       .from("appointments")
       .select(`
@@ -50,7 +58,12 @@ serve(async (req) => {
         appointment_date,
         appointment_time,
         type,
-        members(name, trainer_id, trainers(name))
+        members (
+          name,
+          trainer:trainers (
+            name
+          )
+        )
       `)
       .eq("type", "personal")
       .gte("appointment_date", dateFilter.gte)
@@ -61,10 +74,11 @@ serve(async (req) => {
       query = query.lte("appointment_date", dateFilter.lte);
     }
 
+    // ✅ 트레이너 이름 필터
     if (trainerName) {
       query = query
         .not("members.trainer_id", "is", null)
-        .eq("members.trainers.name", trainerName);
+        .eq("members.trainer.name", trainerName);
     }
 
     const { data, error } = await query;
@@ -104,6 +118,7 @@ serve(async (req) => {
       );
     }
 
+    // ✅ Slack Block formatting
     const blocks: any[] = [
       {
         type: "header",
@@ -129,7 +144,7 @@ serve(async (req) => {
 
     data.forEach((a: any) => {
       const memberName = a.members?.name ?? "-";
-      const trainer = a.members?.trainers?.name ?? "-";
+      const trainer = a.members?.trainer?.name ?? "-";
       const dayAndDate = getDayAndDate(a.appointment_date);
       const time = a.appointment_time?.slice(0, 5) ?? "-";
       blocks.push({
@@ -149,7 +164,13 @@ serve(async (req) => {
       { headers: { "Content-Type": "application/json" }, status: 200 }
     );
   } catch (err) {
-    const reason = (err as Error).message ?? "알 수 없는 오류";
+    let reason = "알 수 없는 오류";
+    if (err instanceof Error) {
+      reason = err.message;
+    } else if (typeof err === "object" && err !== null && "message" in err) {
+      reason = String((err as any).message);
+    }
+
     return new Response(
       JSON.stringify({
         response_type: "ephemeral",
@@ -159,3 +180,4 @@ serve(async (req) => {
     );
   }
 });
+
