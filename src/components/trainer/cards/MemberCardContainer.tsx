@@ -316,12 +316,16 @@ export default function MemberCardContainer({ member }: { member: Member }) {
               }`}
             >
               <div className="p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="text-gray-400 cursor-move">
-                    <i className="fas fa-grip-lines"></i>
-                  </div>
-                  <span className="font-medium text-gray-800">{item.title}</span>
-                </div>
+              <div
+  className="flex items-center gap-3 cursor-pointer"
+  onClick={() => handleSectionOpen(item.key)}
+>
+  <div className="text-gray-400">
+    <i className="fas fa-grip-lines"></i>
+  </div>
+  <span className="font-medium text-gray-800">{item.title}</span>
+</div>
+
                 <div className="flex items-center gap-2">
                   <button onClick={() => handleSectionOpen(item.key)} className="text-gray-500">
                     <i className={`fas fa-chevron-${isOpen ? "up" : "down"}`}></i>
