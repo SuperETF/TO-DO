@@ -73,7 +73,9 @@ export default function MemberDashboardContainer({ memberId }: { memberId: strin
         <CenterAnnouncementSection trainerId={member.trainer_id} />
         <CenterInfoCardSection trainerId={member.trainer_id} />
 
-  {renderIfIncluded("workout", <WeeklyExerciseSection memberId={memberId} registrationDate={""} />)}
+        {renderIfIncluded(
+  "workout",
+  <WeeklyExerciseSection memberId={memberId} registrationDate={member?.registration_date ?? new Date().toISOString()}/>)}
   {renderIfIncluded("routine", <WeeklyRoutineTrackerSection memberId={memberId} />)}
   {renderIfIncluded("mission", <MonthlyMissionSection memberId={memberId} />)}
   {renderIfIncluded("achievement", <LevelBadgeSection memberId={memberId} />)}

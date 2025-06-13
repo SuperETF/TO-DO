@@ -15,7 +15,10 @@ export default function WeeklyExerciseSection({
 }: WeeklyExerciseSectionProps) {
   const [tab, setTab] = useState<"weekly" | "trainer">("weekly");
 
-  const currentWeek = getCurrentWeekSince(registrationDate);
+  const currentWeek =
+    tab === "weekly" && registrationDate
+      ? getCurrentWeekSince(registrationDate)
+      : null;
 
   return (
     <section className="bg-white rounded-xl shadow-sm p-4 mb-6">
@@ -46,18 +49,21 @@ export default function WeeklyExerciseSection({
         </div>
       </div>
 
-      {tab === "weekly" ? (
+      {tab === "weekly" && currentWeek ? (
         <WeeklyExercisePlayer
           memberId={memberId}
           currentWeek={currentWeek}
           refetch={refetch}
         />
-      ) : (
+      ) : null}
+
+      {tab === "trainer" && (
         <TrainerRecommendationPlayer memberId={memberId} />
       )}
     </section>
   );
 }
+
 
 // 📅 주차 계산기
 function getCurrentWeekSince(startDate: string): number {
@@ -209,13 +215,21 @@ function WeeklyExercisePlayer({
   const currentVideo = weeklyVideos[videoIndex] || null;
 
   useEffect(() => {
+    if (!currentWeek || isNaN(currentWeek)) {
+      console.warn("❌ 주차(currentWeek)가 유효하지 않습니다:", currentWeek);
+      return;
+    }
+  
     const fetchWeeklyVideos = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("recommended_workouts")
         .select("video_url, title")
         .eq("week", currentWeek)
-        .order("order", { ascending: true });
-
+        .order("sort_order", { ascending: true }); // ✅ 여기도 'order'가 아닌 정확한 컬럼명 확인 필요
+  
+      console.log("🔥 영상 결과:", data);
+      console.log("⚠️ Supabase 에러:", error);
+  
       if (data && data.length > 0) {
         const formatted = data.map((v, i) => ({
           url: v.video_url,
@@ -223,25 +237,13 @@ function WeeklyExercisePlayer({
           trainer: `${currentWeek}주차 콘텐츠 ${i + 1}번`,
         }));
         setWeeklyVideos(formatted);
-
-        // ✅ 영상 중 마지막으로 완료한 index 불러오기
-        const { data: logs } = await supabase
-          .from("workout_logs")
-          .select("video_url")
-          .eq("member_id", memberId)
-          .eq("is_completed", true)
-          .eq("type", "weekly")
-          .eq("week", currentWeek);
-
-        const completedUrls = logs?.map((l) => l.video_url) || [];
-        const lastCompletedIndex = formatted.findIndex(
-          (v, i) => i > 0 && !completedUrls.includes(v.url)
-        );
-        setVideoIndex(lastCompletedIndex === -1 ? 0 : lastCompletedIndex);
       }
     };
+  
     fetchWeeklyVideos();
   }, [memberId, currentWeek]);
+  
+  
 
   useEffect(() => {
     totalWatchedSeconds.current = 0;
