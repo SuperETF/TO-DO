@@ -28,12 +28,12 @@ export const INITIAL_SECTIONS = [
   { key: "pain", title: "통증 로그", enabled: true, Component: PainLogManagerSection },
   { key: "body", title: "체성분 추이", enabled: true, Component: BodyCompositionChartSection },
   { key: "history", title: "운동 기록", enabled: true, Component: WorkoutSection }, // ✅ 고정 섹션 반영
+  { key: "recommend", title: "추천 운동 입력", enabled: true, Component: TrainerRecommendationInputSection },
 
   // 준비 중 섹션들 (아직 감춰야 함)
   { key: "sleep", title: "수면 분석", enabled: true, Component: Placeholder },
   { key: "goal", title: "목표 설정", enabled: true, Component: Placeholder },
   { key: "feedback", title: "피드백", enabled: true, Component: Placeholder },
-  { key: "recommend", title: "추천 운동 입력", enabled: true, Component: Placeholder },
 ];
 
 
