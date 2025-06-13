@@ -71,12 +71,14 @@ export default function WeeklyExercisePlayer({ memberId, currentWeek, refetch }:
         .eq("member_id", memberId)
         .eq("video_url", currentVideo.url)
         .eq("is_completed", true)
+        .eq("type", "weekly")
+        .eq("week", currentWeek)
         .maybeSingle();
 
       setIsAlreadyCompleted(!!data);
     };
     checkCompleted();
-  }, [currentVideo?.url, memberId]);
+  }, [currentVideo?.url, memberId, currentWeek]);
 
   useEffect(() => {
     if (!currentVideo?.url || !playerRef.current) return;
@@ -162,6 +164,7 @@ export default function WeeklyExercisePlayer({ memberId, currentWeek, refetch }:
       type: "weekly",
       workout_notes: currentVideo.title,
       video_url: currentVideo.url,
+      sort_order: videoIndex + 1, // ✅ 몇 번째 영상인지 저장
     });
 
     if (!logError) {

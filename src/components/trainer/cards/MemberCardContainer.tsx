@@ -11,6 +11,7 @@ import AchievementSummarySection from "../sections/AchievementSummarySection";
 import MemberRankingAdminSection from "../sections/MemberRankingAdminSection";
 import WorkoutSection from "../sections/WorkoutSection";
 import MissionSection from "../sections/MissionSection";
+import WeeklyExerciseStatusSection from "../sections/WeeklyExerciseStatusSection";
 
 
 const Placeholder = () => (
@@ -18,7 +19,7 @@ const Placeholder = () => (
 );
 
 export const INITIAL_SECTIONS = [
-  { key: "workout", title: "운동 로그", enabled: true, Component: TrainerRecommendationInputSection },
+  { key: "workout", title: "운동 로그", enabled: true, Component: WeeklyExerciseStatusSection },
   { key: "routine", title: "주간 운동 체크", enabled: true, Component: WeeklyRoutineSummarySection },
   { key: "mission", title: "미션 목록", enabled: true, Component: MissionSection },
   { key: "achievement", title: "나의 성취", enabled: true, Component: AchievementSummarySection },
