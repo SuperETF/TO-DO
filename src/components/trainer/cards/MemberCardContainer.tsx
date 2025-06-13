@@ -1,33 +1,42 @@
-// 최종 리팩토링된 MemberCardContainer 전체 코드
+// 최종 리팩토링된 MemberCardContainer 전체 코드(트레이너 대시보드 카드)
 import { useRef, useState, useMemo, type DragEvent, type SetStateAction, useEffect } from "react";
-import ConditionSection from "../sections/ConditionSection";
-import WorkoutSection from "../sections/WorkoutSection";
-import BodyCompositionSection from "../sections/BodyCompositionSection";
-import FeedbackSection from "../sections/FeedbackSection";
 import AppointmentSection from "../sections/AppointmentSection";
-import MissionSection from "../sections/MissionSection";
-import TrainerNoteSection from "../sections/TrainerNoteSection";
 import PainLogManagerSection from "../sections/PainLogManagerSection";
-import TrainerRecommendationInputSection from "../sections/TrainerRecommendationInputSection";
 import { supabase } from "../../../lib/supabaseClient";
+import WeeklyRoutineSummarySection from "../sections/WeeklyRoutineSummarySection";
+import BodyCompositionChartSection from "../sections/BodyCompositionSection";
+import TrainerNoteSection from "../sections/TrainerNoteSection";
+import TrainerRecommendationInputSection from "../sections/TrainerRecommendationInputSection";
+import AchievementSummarySection from "../sections/AchievementSummarySection";
+import MemberRankingAdminSection from "../sections/MemberRankingAdminSection";
+import WorkoutSection from "../sections/WorkoutSection";
+import MissionSection from "../sections/MissionSection";
+
 
 const Placeholder = () => (
   <div className="text-gray-400 py-3 text-center">준비 중인 기능입니다</div>
 );
 
-const INITIAL_SECTIONS = [
-  { key: "condition", title: "컨디션 로그", enabled: true, Component: ConditionSection, hasOnSaved: true },
-  { key: "workout", title: "운동 로그", enabled: true, Component: WorkoutSection, hasOnSaved: true },
-  { key: "pain", title: "통증 로그", enabled: false, Component: PainLogManagerSection },
-  { key: "diet", title: "식단 관리", enabled: true, Component: Placeholder },
-  { key: "weight", title: "체중 기록", enabled: true, Component: BodyCompositionSection },
-  { key: "sleep", title: "수면 분석", enabled: false, Component: Placeholder },
-  { key: "goal", title: "목표 설정", enabled: true, Component: MissionSection },
-  { key: "feedback", title: "피드백", enabled: true, Component: FeedbackSection },
+export const INITIAL_SECTIONS = [
+  { key: "workout", title: "운동 로그", enabled: true, Component: TrainerRecommendationInputSection },
+  { key: "routine", title: "주간 운동 체크", enabled: true, Component: WeeklyRoutineSummarySection },
+  { key: "mission", title: "미션 목록", enabled: true, Component: MissionSection },
+  { key: "achievement", title: "나의 성취", enabled: true, Component: AchievementSummarySection },
+  { key: "ranking", title: "멤버 랭킹", enabled: true, Component: MemberRankingAdminSection },
   { key: "appointment", title: "예약 일정", enabled: true, Component: AppointmentSection },
-  { key: "note", title: "트레이너 메모", enabled: true, Component: TrainerNoteSection, hasOnSaved: true },
-  { key: "recommend", title: "추천 운동 입력", enabled: true, Component: TrainerRecommendationInputSection },
+  { key: "note", title: "트레이너 한마디", enabled: true, Component: TrainerNoteSection },
+  { key: "pain", title: "통증 로그", enabled: true, Component: PainLogManagerSection },
+  { key: "body", title: "체성분 추이", enabled: true, Component: BodyCompositionChartSection },
+  { key: "history", title: "운동 기록", enabled: true, Component: WorkoutSection }, // ✅ 고정 섹션 반영
+
+  // 준비 중 섹션들 (아직 감춰야 함)
+  { key: "sleep", title: "수면 분석", enabled: true, Component: Placeholder },
+  { key: "goal", title: "목표 설정", enabled: true, Component: Placeholder },
+  { key: "feedback", title: "피드백", enabled: true, Component: Placeholder },
+  { key: "recommend", title: "추천 운동 입력", enabled: true, Component: Placeholder },
 ];
+
+
 
 interface Member {
   id: string;
@@ -86,6 +95,7 @@ export default function MemberCardContainer({ member }: { member: Member }) {
   // ✅ 최신 goal, 나이, 키 등도 함께 불러오기 위한 useEffect 추가
   useEffect(() => {
     const fetchMemberMeta = async () => {
+      
       const { data } = await supabase
         .from("members")
         .select("goal, age, height, weight, lesson_total_count")
@@ -106,7 +116,43 @@ export default function MemberCardContainer({ member }: { member: Member }) {
   
     fetchMemberMeta();
   }, [member.id]);
-  
+
+  // ✅ fetchSectionSettings: 저장된 섹션 설정 불러오기 (order 포함 정렬)
+useEffect(() => {
+  const fetchSectionSettings = async () => {
+    const { data, error } = await supabase
+      .from("member_section_settings")
+      .select("settings")
+      .eq("member_id", member.id)
+      .single();
+
+    if (error) {
+      console.warn("❕ 설정 불러오기 실패. 기본값 사용:", error.message);
+      return;
+    }
+
+    if (data && data.settings) {
+      const savedSettings: { key: string; enabled: boolean; order: number }[] = data.settings;
+      const updatedSections = savedSettings
+        .map((saved) => {
+          const original = INITIAL_SECTIONS.find((s) => s.key === saved.key);
+          return original ? { ...original, enabled: saved.enabled, _order: saved.order } : null;
+        })
+        .filter(Boolean)
+        .sort((a, b) => (a!._order ?? 0) - (b!._order ?? 0))
+        .map((saved) => {
+          const { _order, ...section } = saved as { _order: number; key: string; enabled: boolean; title: string; Component: any; hasOnSaved?: boolean };
+          return section;
+        }); // _order 제거 후 설정 적용
+
+      setSections(updatedSections as typeof INITIAL_SECTIONS);
+    }
+  };
+
+  fetchSectionSettings();
+}, [member.id]);
+
+
   const registrationDate = useMemo(() => new Date(member.start_date ?? member.created_at ?? ""), [member]);
   
   const membershipEndDate = useMemo(() => {
@@ -144,21 +190,26 @@ export default function MemberCardContainer({ member }: { member: Member }) {
     setSections(items);
     setDraggedIdx(idx);
   };
-  const handleDragEnd = () => {
-    setDraggedIdx(null);
-    showToast("메뉴 순서가 저장되었습니다");
-  };
-  const toggleSectionStatus = (key: string) => {
-    setSections((prev) =>
-      prev.map((item) =>
-        item.key === key ? { ...item, enabled: !item.enabled } : item
-      )
+  // ✅ handleDragEnd 수정
+const handleDragEnd = () => {
+  setDraggedIdx(null);
+  showToast("메뉴 순서가 저장되었습니다");
+  saveSectionSettings(sections);
+};
+  // ✅ toggleSectionStatus 수정
+const toggleSectionStatus = (key: string) => {
+  setSections((prev) => {
+    const updated = prev.map((item) =>
+      item.key === key ? { ...item, enabled: !item.enabled } : item
     );
-    const item = sections.find((item) => item.key === key);
-    if (item) {
-      showToast(`${item.title}이(가) ${!item.enabled ? "활성화" : "비활성화"}되었습니다`);
+    const toggledItem = updated.find((i) => i.key === key);
+    if (toggledItem) {
+      showToast(`${toggledItem.title}이(가) ${toggledItem.enabled ? "활성화" : "비활성화"}되었습니다`);
     }
-  };
+    saveSectionSettings(updated);
+    return updated;
+  });
+};
   const showToast = (msg: SetStateAction<string>) => {
     setToast(msg);
     if (toastTimeout.current) clearTimeout(toastTimeout.current);
@@ -196,6 +247,22 @@ export default function MemberCardContainer({ member }: { member: Member }) {
   };
   
   const handleSectionOpen = (key: string | null) => setActiveSection((prev) => (prev === key ? null : key));
+
+  const saveSectionSettings = async (sections: typeof INITIAL_SECTIONS) => {
+    const { error } = await supabase
+      .from("member_section_settings")
+      .upsert({
+        member_id: member.id,
+        settings: sections.map((s, index) => ({ key: s.key, enabled: s.enabled, order: index })),
+        updated_at: new Date().toISOString(),
+      });
+  
+    if (error) {
+      console.error("❌ 설정 저장 실패:", error);
+    } else {
+      console.log("✅ 설정 저장 성공");
+    }
+  };
 
   return (
     <div className="bg-gray-50 min-h-screen py-6 px-4">
@@ -345,11 +412,7 @@ export default function MemberCardContainer({ member }: { member: Member }) {
               </div>
               {isOpen && item.enabled && (
                 <div className="px-4 pb-4 transition-all duration-300 ease-in-out">
-                  {item.hasOnSaved ? (
-                    <Comp memberId={member.id} onSaved={() => showToast(`${item.title} 저장 완료`)} />
-                  ) : (
-                    <Comp memberId={member.id} />
-                  )}
+                  <Comp memberId={member.id} />
                 </div>
               )}
             </div>

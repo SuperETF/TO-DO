@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
-import { getISOWeek } from "date-fns";
+import { getISOWeek, startOfWeek, addDays } from "date-fns";
 
 export interface WeeklyRoutineTrackerSectionProps {
   memberId: string;
@@ -8,7 +8,7 @@ export interface WeeklyRoutineTrackerSectionProps {
 }
 
 interface RoutineLog {
-  day: number; // 0 = Monday
+  day: number;
   completed: boolean;
   date: string;
 }
@@ -26,8 +26,7 @@ export default function WeeklyRoutineTrackerSection({
 
   const fetchRoutine = async () => {
     setLoading(true);
-    const today = new Date();
-    const weekId = getWeekId(today);
+    const weekId = getWeekId(new Date());
 
     const { data, error } = await supabase
       .from("routine_logs")
@@ -38,19 +37,20 @@ export default function WeeklyRoutineTrackerSection({
     if (!error && data) {
       setRoutines(data as RoutineLog[]);
     }
+
     setLoading(false);
   };
 
   useEffect(() => {
     if (memberId) fetchRoutine();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [memberId]);
 
   const toggleDay = async (day: number) => {
     const today = new Date();
     const weekId = getWeekId(today);
-    const base = new Date(today);
-    base.setDate(base.getDate() - ((base.getDay() + 6) % 7) + day); // 월요일 기준
+
+    const weekStart = startOfWeek(today, { weekStartsOn: 1 }); // 월요일 시작
+    const base = addDays(weekStart, day);
     const isoDate = base.toISOString().split("T")[0];
 
     const existing = routines.find((r) => r.day === day);
@@ -130,7 +130,7 @@ export default function WeeklyRoutineTrackerSection({
         <div className="text-center text-gray-400 py-8">로딩 중...</div>
       ) : (
         <div className="flex justify-between">
-          {["월", "화", "수", "목", "금", "토", "일"].map((dayLabel, idx) => {
+          {["월", "화", "수", "목", "금", "토", "일"].map((label, idx) => {
             const found = routines.find((r) => r.day === idx);
             const completed = found?.completed ?? false;
 
@@ -140,7 +140,7 @@ export default function WeeklyRoutineTrackerSection({
                 className="flex flex-col items-center"
                 onClick={() => toggleDay(idx)}
               >
-                <span className="text-sm text-gray-600 mb-1">{dayLabel}</span>
+                <span className="text-sm text-gray-600 mb-1">{label}</span>
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center border-2 cursor-pointer transition ${
                     completed

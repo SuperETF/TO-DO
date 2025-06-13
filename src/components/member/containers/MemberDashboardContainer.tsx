@@ -1,7 +1,6 @@
-import { useEffect, useState } from "react";
+// 리팩토링된 MemberDashboardContainer.tsx
+import { useEffect, useState, type JSX } from "react";
 import { supabase } from "../../../lib/supabaseClient";
-import Header from "../layout/MemberHeader";
-import TabBar from "../layout/MemberTabBar";
 import WeeklyExerciseSection from "../sections/WeeklyExerciseSection";
 import WeeklyRoutineTrackerSection from "../sections/WeeklyRoutineTrackerSection";
 import MonthlyMissionSection from "../sections/MonthlyMissionSection";
@@ -13,76 +12,83 @@ import BodyCompositionChartSection from "../sections/BodyCompositionChartSection
 import WorkoutHistorySection from "../sections/WorkoutHistorySection";
 import CenterAnnouncementSection from "../sections/CenterAnnouncementSection";
 import CenterInfoCardSection from "../sections/CenterInfoCardSection";
-import { useAchievement } from "../../../hooks/useAchievement";
 import MemberRankingSection from "../sections/MemberRankingSection";
+import Header from "../layout/MemberHeader";
+import TabBar from "../layout/MemberTabBar";
 
-interface Props {
-  memberId: string;
-}
-
-export default function MemberDashboardContainer({ memberId }: Props) {
+export default function MemberDashboardContainer({ memberId }: { memberId: string }) {
   const [member, setMember] = useState<any>(null);
+  const [sections, setSections] = useState<string[] | null>(null);
 
   useEffect(() => {
     const fetchMember = async () => {
-      const resolvedId = memberId ?? localStorage.getItem("member_id");
-      if (!resolvedId) return;
-
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("members")
         .select("*")
-        .eq("id", resolvedId)
+        .eq("id", memberId)
         .single();
-
-      if (!error && data) setMember(data);
+      setMember(data);
     };
-
     fetchMember();
   }, [memberId]);
 
-  const achievement = useAchievement(member?.id);
+  useEffect(() => {
+    const fetchSections = async () => {
+      const { data, error } = await supabase
+        .from("member_section_settings")
+        .select("settings")
+        .eq("member_id", memberId)
+        .single();
+
+      if (error || !data?.settings) {
+        setSections(null); // fallback to default order
+        return;
+      }
+
+      const enabledKeys = data.settings
+        .filter((s: any) => s.enabled)
+        .sort((a: any, b: any) => a.order - b.order)
+        .map((s: any) => s.key);
+      setSections(enabledKeys);
+    };
+    fetchSections();
+  }, [memberId]);
 
   if (!member) return <div className="text-center pt-20">Loading...</div>;
+
+  const renderIfIncluded = (key: string, element: JSX.Element) => {
+    if (!sections) return true; // fallback 상태에서 전체 출력
+    return sections.includes(key) ? element : null;
+  };
 
   return (
     <div className="bg-gray-50 min-h-screen pb-20">
       <Header />
-
       <main className="pt-24 px-4 pb-20 max-w-screen-sm mx-auto">
         <h1 className="text-lg font-semibold mb-4">
           안녕하세요, <span className="text-teal-600">{member.name}</span>님!
         </h1>
 
         <div className="space-y-6">
-          <CenterAnnouncementSection />
-          <CenterInfoCardSection />
+        <CenterAnnouncementSection trainerId={member.trainer_id} />
+        <CenterInfoCardSection trainerId={member.trainer_id} />
 
-          <WeeklyExerciseSection
-            memberId={member.id}
-            registrationDate={member.created_at}
-            refetch={achievement.refetch} // refetch 사용
-          />
-          <WeeklyRoutineTrackerSection
-            memberId={member.id}
-            refetch={achievement.refetch} // refetch 사용
-          />
-          <MonthlyMissionSection
-            memberId={member.id}
-            refetch={achievement.refetch} // refetch 사용
-          />
-          <LevelBadgeSection
-            memberId={member.id}
-            {...achievement} // achievement 객체를 그대로 전달
-          />
-          <MemberRankingSection memberId={memberId} />
-          <NextAppointmentSection memberId={member.id} />
-          <TrainerCommentSection memberId={member.id} />
-          <PainScoreChartSection memberId={member.id} />
-          <BodyCompositionChartSection memberId={member.id} />
-          <WorkoutHistorySection memberId={member.id} />
-        </div>
+  {renderIfIncluded("workout", <WeeklyExerciseSection memberId={memberId} registrationDate={""} />)}
+  {renderIfIncluded("routine", <WeeklyRoutineTrackerSection memberId={memberId} />)}
+  {renderIfIncluded("mission", <MonthlyMissionSection memberId={memberId} />)}
+  {renderIfIncluded("achievement", <LevelBadgeSection memberId={memberId} />)}
+  <MemberRankingSection memberId={memberId} />
+  {renderIfIncluded("appointment", <NextAppointmentSection memberId={memberId} />)}
+  {renderIfIncluded("note", <TrainerCommentSection memberId={memberId} />)}
+  {renderIfIncluded("pain", <PainScoreChartSection memberId={memberId} />)}
+  {renderIfIncluded("body", <BodyCompositionChartSection memberId={memberId} />)}
+  <WorkoutHistorySection memberId={memberId} />
+
+  {/* 아래는 준비 중인 섹션들 */}
+
+</div>
+
       </main>
-
       <TabBar />
     </div>
   );

@@ -1,7 +1,6 @@
-// src/components/trainer/sections/MemberRegisterModal.tsx
-
 import { useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
+import { INITIAL_SECTIONS } from "../cards/MemberCardContainer";
 
 interface MemberRegisterModalProps {
   open: boolean;
@@ -38,21 +37,48 @@ export default function MemberRegisterModal({
     }
 
     setLoading(true);
-    const { error } = await supabase.from("members").insert({
-      name,
-      phone_last4: phoneLast4,
-      trainer_id: trainerId,
-    });
-    setLoading(false);
 
-    if (error) {
-      setError(error.message);
-    } else {
-      setName("");
-      setPhoneLast4("");
-      onSuccess?.();
-      onClose();
+    // 1. 회원 생성
+    const { data: member, error: insertError } = await supabase
+      .from("members")
+      .insert({
+        name,
+        phone_last4: phoneLast4,
+        trainer_id: trainerId,
+      })
+      .select()
+      .single();
+
+    if (insertError || !member) {
+      setLoading(false);
+      setError(insertError?.message ?? "회원 등록 실패");
+      return;
     }
+
+    // 2. 섹션 설정 자동 삽입
+    const sectionPayload = INITIAL_SECTIONS.map((s, index) => ({
+      key: s.key,
+      enabled: s.enabled,
+      order: index,
+    }));
+
+    const { error: settingError } = await supabase
+      .from("member_section_settings")
+      .upsert({
+        member_id: member.id,
+        settings: sectionPayload,
+        updated_at: new Date().toISOString(),
+      });
+
+    if (settingError) {
+      console.warn("❗ 메뉴 설정 저장 실패:", settingError.message);
+    }
+
+    setLoading(false);
+    setName("");
+    setPhoneLast4("");
+    onSuccess?.();
+    onClose();
   };
 
   return (

@@ -19,6 +19,7 @@ export default function PainScoreChartSection({ memberId }: Props) {
   const [areas, setAreas] = useState<string[]>([]);
   const [selectedArea, setSelectedArea] = useState<string>("");
   const [showModal, setShowModal] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const colorMap: Record<string, string> = {};
   areas.forEach((area, i) => {
@@ -29,22 +30,22 @@ export default function PainScoreChartSection({ memberId }: Props) {
     const fetchPainScores = async () => {
       if (!memberId || typeof memberId !== "string" || memberId.length !== 36) return;
 
-      const { data, error } = await supabase
-        .from("pain_logs") // 트레이너 기록
+      const { data: logs, error } = await supabase
+        .from("v_latest_pain_logs")
         .select("date, pain_score, pain_area")
         .eq("member_id", memberId)
         .order("date", { ascending: true });
 
-      if (error || !data) return;
+      if (error || !logs) return;
 
-      setPainData(data);
-      const uniqueAreas = Array.from(new Set(data.map((d) => d.pain_area)));
+      const uniqueAreas = Array.from(new Set(logs.map((d) => d.pain_area)));
       setAreas(uniqueAreas);
-      setSelectedArea(uniqueAreas[0]);
+      setPainData(logs);
+      setSelectedArea((prev) => prev || uniqueAreas[0]);
     };
 
     fetchPainScores();
-  }, [memberId]);
+  }, [memberId, refreshKey]);
 
   useEffect(() => {
     if (!chartRef.current || painData.length === 0 || !selectedArea) return;
@@ -52,13 +53,15 @@ export default function PainScoreChartSection({ memberId }: Props) {
     const filteredData = painData.filter((d) => d.pain_area === selectedArea);
     const dates = filteredData.map((d) => d.date);
 
-    const seriesData = dates.map((date) => {
-      const entry = filteredData.find((d) => d.date === date);
-      return entry ? entry.pain_score ?? null : null;
-    });
+    const seriesData = filteredData.map((d) => d.pain_score ?? null);
 
-    const chart =
-      echarts.getInstanceByDom(chartRef.current) || echarts.init(chartRef.current);
+    const chartContainer = chartRef.current;
+    if (!chartContainer) return;
+
+    if (echarts.getInstanceByDom(chartContainer)) {
+      echarts.dispose(chartContainer);
+    }
+    const chart = echarts.init(chartContainer);
 
     chart.setOption({
       tooltip: {
@@ -114,7 +117,7 @@ export default function PainScoreChartSection({ memberId }: Props) {
         </button>
       </div>
 
-      <div className="flex gap-3 mb-4">
+      <div className="flex gap-3 mb-4 overflow-x-auto">
         {areas.map((area) => (
           <button
             key={area}
@@ -140,7 +143,10 @@ export default function PainScoreChartSection({ memberId }: Props) {
       {showModal && (
         <PainLogModal
           memberId={memberId}
-          onClose={() => setShowModal(false)}
+          onClose={() => {
+            setShowModal(false);
+            setRefreshKey((v) => v + 1);
+          }}
         />
       )}
     </section>

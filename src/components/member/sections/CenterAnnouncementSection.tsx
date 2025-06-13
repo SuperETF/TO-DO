@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 
-export default function CenterAnnouncementSection() {
+interface Props {
+  trainerId: string;
+}
+
+export default function CenterAnnouncementSection({ trainerId }: Props) {
   const [announcement, setAnnouncement] = useState<any>(null);
 
   useEffect(() => {
@@ -10,6 +14,7 @@ export default function CenterAnnouncementSection() {
       const { data } = await supabase
         .from("center_announcements")
         .select("*")
+        .eq("trainer_id", trainerId)
         .eq("is_active", true)
         .lte("start_date", today)
         .gte("end_date", today)
@@ -20,13 +25,13 @@ export default function CenterAnnouncementSection() {
     };
 
     fetchAnnouncement();
-  }, []);
+  }, [trainerId]);
 
   if (!announcement) return null;
 
   return (
     <button
-      className="w-full bg-gradient-to-r from-teal-500 to-teal-600 rounded-xl p-4 mb-6 text-left focus:outline-none hover:brightness-105 transition"
+      className="w-full bg-gradient-to-r from-teal-500 to-teal-600 rounded-xl p-4 mb-1 text-left focus:outline-none hover:brightness-105 transition"
       onClick={() => {
         if (announcement.link_url) {
           window.open(announcement.link_url, "_blank");

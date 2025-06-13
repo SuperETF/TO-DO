@@ -28,7 +28,7 @@ export default function PainLogModal({ memberId, onClose }: Props) {
 
   const fetchLogs = async () => {
     const { data, error } = await supabase
-      .from("member_pain_logs")
+      .from("pain_logs")
       .select("*")
       .eq("member_id", memberId)
       .order("date", { ascending: false });
@@ -57,13 +57,14 @@ export default function PainLogModal({ memberId, onClose }: Props) {
 
     setIsSubmitting(true);
 
-    const { error } = await supabase.from("member_pain_logs").insert({
+    const { error } = await supabase.from("pain_logs").insert({
       member_id: memberId,
       date,
       pain_area: painArea,
       pain_score: painScore,
       activity,
       note,
+      source: "member", // ✅ 추가: 작성 주체 표시
     });
 
     if (!error) {

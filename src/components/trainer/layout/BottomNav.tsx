@@ -1,9 +1,8 @@
-// src/components/trainer/layout/BottomNav.tsx
 
 interface BottomNavProps {
   activeTab: string;
   setActiveTab: (tabId: string) => void;
-  onOpenRegister: () => void; // 회원등록 버튼 클릭 핸들러
+  onOpenManageSlide: () => void;
 }
 
 const tabs = [
@@ -13,7 +12,7 @@ const tabs = [
   { id: "stats", icon: "chart-line", label: "통계" },
 ];
 
-function BottomNav({ activeTab, setActiveTab, onOpenRegister }: BottomNavProps) {
+function BottomNav({ activeTab, setActiveTab, onOpenManageSlide }: BottomNavProps) {
   return (
     <nav
       className="w-full grid grid-cols-5 border-t bg-white text-xs text-gray-600 shadow-lg"
@@ -38,12 +37,14 @@ function BottomNav({ activeTab, setActiveTab, onOpenRegister }: BottomNavProps) 
           </button>
         );
       })}
+
+      {/* ✅ 정보 등록 슬라이드 버튼 */}
       <button
-        onClick={onOpenRegister}
+        onClick={onOpenManageSlide}
         className="flex flex-col items-center justify-center py-2 transition-all text-blue-600 font-semibold"
       >
-        <i className="fas fa-user-plus text-xl mb-1" />
-        <span>회원 등록</span>
+        <i className="fas fa-sliders-h text-xl mb-1" />
+        <span>정보 등록</span>
       </button>
     </nav>
   );
