@@ -1,4 +1,3 @@
-// ✅ 추상화된 슬라이드 애니메이션 로직 포함 버전 (입장/퇴장 애니메이션 완성)
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -35,22 +34,35 @@ export default function TrainerDashboardPage() {
   const location = useLocation();
   const { setDirection, direction } = useSlide();
 
+  // 🔥 자동로그인(로컬 + 세션) 지원 fetchMembers
   const fetchMembers = async () => {
+    // 1. Supabase Auth 세션 우선
     const { data: sessionData } = await supabase.auth.getSession();
-    const trainerId = sessionData.session?.user.id;
-    if (!trainerId) return;
-    setTrainerId(trainerId);
+    let id = sessionData.session?.user.id;
+
+    // 2. 세션 없으면 로컬스토리지 기반 자동로그인
+    if (!id) {
+      const autoLogin = localStorage.getItem("auto_login") === "true";
+      const storedTrainerId = localStorage.getItem("trainer_id");
+      if (autoLogin && storedTrainerId) {
+        id = storedTrainerId;
+      }
+    }
+
+    if (!id) return;
+    setTrainerId(id);
 
     const { data, error } = await supabase
       .from("members")
       .select("*")
-      .eq("trainer_id", trainerId);
+      .eq("trainer_id", id);
 
     if (!error && data) setMembers(data);
   };
 
   useEffect(() => {
     fetchMembers();
+    // eslint-disable-next-line
   }, []);
 
   useEffect(() => {

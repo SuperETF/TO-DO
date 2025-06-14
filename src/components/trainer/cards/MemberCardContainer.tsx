@@ -71,6 +71,21 @@ export default function MemberCardContainer({ member }: { member: Member }) {
 
   const today = useMemo(() => new Date(), []);
 
+  const [usedLessonCount, setUsedLessonCount] = useState(0);
+
+useEffect(() => {
+  if (!member.id) return;
+  const fetchUsedCount = async () => {
+    const { count } = await supabase
+      .from("routine_logs")
+      .select("*", { count: "exact", head: true })
+      .eq("member_id", member.id)
+      .eq("lesson_count", 1); // routine_logs에 lesson_count=1인 row 개수 카운트
+    setUsedLessonCount(count ?? 0);
+  };
+  fetchUsedCount();
+}, [member.id]);
+
   // ---------- 2. 회원 메타데이터(시작일 포함) 불러오기 ----------
   useEffect(() => {
     const fetchMemberMeta = async () => {
@@ -413,17 +428,17 @@ export default function MemberCardContainer({ member }: { member: Member }) {
       </div>
     </div>
 
-    {/* 레슨권 정보 */}
-    {editForm.program_type?.includes("lesson") && (
-      <>
-        <div className="bg-indigo-50 rounded-lg text-center py-3">
-          <div className="text-sm text-indigo-700 font-semibold mb-1">남은 레슨</div>
-          <div className="text-2xl font-bold text-indigo-700">
-            {member.lesson_total_count && member.lesson_used_count
-              ? member.lesson_total_count - member.lesson_used_count
-              : "-"}회
-          </div>
-        </div>
+{/* 레슨권 정보 */}
+{editForm.program_type?.includes("lesson") && (
+  <>
+    {/* 남은 레슨 */}
+    <div className="bg-indigo-50 rounded-lg text-center py-3">
+  <div className="text-sm text-indigo-700 font-semibold mb-1">남은 레슨</div>
+  <div className={`text-2xl font-bold ${Math.max(Number(member.lesson_total_count ?? 0) - usedLessonCount, 0) === 0 ? "text-red-600" : "text-indigo-700"}`}>
+    {Math.max(Number(member.lesson_total_count ?? 0) - usedLessonCount, 0)}회
+  </div>
+</div>
+
         <div className="bg-indigo-50 rounded-lg text-center py-3">
   <div className="text-sm text-indigo-700 font-semibold mb-1">총 레슨</div>
   <div className="text-2xl font-bold text-indigo-700">

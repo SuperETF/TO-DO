@@ -13,33 +13,20 @@ export default function LoginPage() {
   const [autoLogin, setAutoLogin] = useState(false);
   const navigate = useNavigate();
 
-  // ✅ DB에 저장된 auto_login 값 확인해서 자동 로그인 처리
+  // ✅ localStorage만으로 자동로그인 처리
   useEffect(() => {
-    const checkAutoLogin = async () => {
-      const memberId = localStorage.getItem("member_id");
-      if (!memberId) return;
-
-      const { data, error } = await supabase
-        .from("members")
-        .select("auto_login")
-        .eq("id", memberId)
-        .single();
-
-      if (error || !data?.auto_login) return;
-
-      navigate("/member-dashboard");
-    };
-
+    const memberId = localStorage.getItem("member_id");
+    const autoLogin = localStorage.getItem("auto_login") === "true";
     const role = localStorage.getItem("role");
 
     if (role === "trainer") {
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session) navigate("/trainer-dashboard");
       });
-    } else if (role === "member") {
-      checkAutoLogin();
+    } else if (role === "member" && memberId && autoLogin) {
+      navigate("/member-dashboard");
     }
-  }, []);
+  }, [navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,11 +47,17 @@ export default function LoginPage() {
       localStorage.setItem("trainer_id", data.user.id);
       localStorage.setItem("role", "trainer");
 
+      if (autoLogin) {
+        localStorage.setItem("auto_login", "true");
+      } else {
+        localStorage.removeItem("auto_login");
+      }
+
       navigate("/trainer-dashboard");
     } else {
       const { data, error } = await supabase
         .from("members")
-        .select("id, auto_login")
+        .select("id")
         .eq("name", name.trim())
         .eq("phone_last4", phoneLast4.trim())
         .single();
@@ -75,15 +68,15 @@ export default function LoginPage() {
         return;
       }
 
-      // ✅ member_id 저장 (기기 자동 로그인 시 사용)
-      localStorage.setItem("member_id", data.id);
       localStorage.setItem("role", "member");
 
-      // ✅ auto_login 상태 DB에 반영
-      await supabase
-        .from("members")
-        .update({ auto_login: autoLogin })
-        .eq("id", data.id);
+      if (autoLogin) {
+        localStorage.setItem("member_id", data.id);
+        localStorage.setItem("auto_login", "true");
+      } else {
+        localStorage.removeItem("member_id");
+        localStorage.removeItem("auto_login");
+      }
 
       navigate("/member-dashboard");
     }
@@ -96,7 +89,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-[#4CD6B4] text-3xl font-bold">TO-DO</h1>
-          <p className="text-gray-600 mt-2">오늘도 건강하세요!</p>
+          <p className="text-gray-600 mt-2">똑똑한 건강 관리</p>
         </div>
 
         <div className="bg-gray-50/50 p-1 rounded-2xl mb-8 flex">
