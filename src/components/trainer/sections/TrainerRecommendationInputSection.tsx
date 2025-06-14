@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
-import TrainerVideoUploadModal from "./trainerVideoUploadModal";
+import TrainerVideoUploadModal from "./TrainerVideoUploadModal";
 import { DndContext, closestCenter } from "@dnd-kit/core";
 import {
   arrayMove,
