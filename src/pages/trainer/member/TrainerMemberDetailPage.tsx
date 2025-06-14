@@ -5,6 +5,11 @@ import { useSlide } from "../../../context/SlideContext";
 import { supabase } from "../../../lib/supabaseClient";
 import MemberCardContainer from "../../../components/trainer/cards/MemberCardContainer";
 
+// 반드시 props에 추가!
+interface Props {
+  setSelectedMemberId: (id: string | null) => void;
+}
+
 interface Member {
   id: string;
   name: string;
@@ -12,7 +17,7 @@ interface Member {
   created_at?: string;
 }
 
-export default function TrainerMemberDetailPage() {
+export default function TrainerMemberDetailPage({ setSelectedMemberId }: Props) {
   const { id } = useParams();
   const navigate = useNavigate();
   const { direction, setDirection } = useSlide();
@@ -20,7 +25,11 @@ export default function TrainerMemberDetailPage() {
   const [member, setMember] = useState<Member | null>(null);
   const [trainerId, setTrainerId] = useState<string | null>(null);
 
-  // 1. 회원 정보 불러오기
+  // ✅ 상세 페이지 진입 시 강조 해제 (scale-105 풀림)
+  useEffect(() => {
+    setSelectedMemberId(null);
+  }, [setSelectedMemberId]);
+
   useEffect(() => {
     if (!id) return;
 
@@ -35,16 +44,13 @@ export default function TrainerMemberDetailPage() {
     };
     fetch();
 
-    // 2. 트레이너 ID 불러오기 (세션 기반)
     const fetchTrainer = async () => {
-      // supabase.auth.getSession() or getUser() 모두 가능
       const { data: { user } } = await supabase.auth.getUser();
       setTrainerId(user?.id ?? null);
     };
     fetchTrainer();
   }, [id]);
 
-  // 3. 로딩 상태 방어
   if (!member || !trainerId) {
     return (
       <div className="text-center py-12 text-sm text-gray-500">
@@ -53,7 +59,6 @@ export default function TrainerMemberDetailPage() {
     );
   }
 
-  // 4. 정상 렌더링
   return (
     <motion.div
       initial={{ x: direction * 300, opacity: 0 }}
@@ -62,7 +67,6 @@ export default function TrainerMemberDetailPage() {
       transition={{ duration: 0.3, ease: "easeInOut" }}
     >
       <div className="min-h-screen bg-gray-50 px-4 pt-6 pb-10 max-w-[890px] mx-auto">
-        {/* 상단 헤더 */}
         <div className="flex items-center justify-between mb-4">
           <button
             onClick={() => {
@@ -77,8 +81,6 @@ export default function TrainerMemberDetailPage() {
           <h1 className="text-lg font-bold text-gray-800">{member.name}</h1>
           <div className="w-8" />
         </div>
-
-        {/* 멤버 카드에 trainerId 반드시 전달 */}
         <MemberCardContainer member={member} trainerId={trainerId} />
       </div>
     </motion.div>

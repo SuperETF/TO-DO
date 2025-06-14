@@ -10,21 +10,21 @@ import ManageMenuSlide from "./ManageMenuSlide";
 import MemberRegisterModal from "../../components/trainer/modals/MemberRegisterModal";
 import InfoEditModal from "../../components/trainer/modals/InfoEditModal";
 import NoticeEditModal from "../../components/trainer/modals/NoticeEditModal";
+import type { Member } from "../../types/member";
 
-interface Member {
-  id: string;
-  name: string;
-  phone_last4: string;
-  created_at?: string;
-  trainer_id?: string;
+interface TrainerDashboardPageProps {
+  selectedMemberId: string | null;
+  setSelectedMemberId: (id: string | null) => void;
 }
 
-export default function TrainerDashboardPage() {
+export default function TrainerDashboardPage({
+  selectedMemberId,
+  setSelectedMemberId,
+}: TrainerDashboardPageProps) {
   const [members, setMembers] = useState<Member[]>([]);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("members");
   const [trainerId, setTrainerId] = useState<string | null>(null);
-  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [showManageSlide, setShowManageSlide] = useState(false);
   const [activeModal, setActiveModal] = useState<null | "info" | "member" | "notice">(null);
   const [isClosing, setIsClosing] = useState(false);
@@ -33,6 +33,7 @@ export default function TrainerDashboardPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { setDirection, direction } = useSlide();
+
 
   // 🔥 자동로그인(로컬 + 세션) 지원 fetchMembers
   const fetchMembers = async () => {
