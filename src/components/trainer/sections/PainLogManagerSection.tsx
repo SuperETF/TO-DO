@@ -17,10 +17,10 @@ export default function PainLogManagerSection({ memberId }: Props) {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [score, setScore] = useState(0);
   const [area, setArea] = useState("");
-  const [recentLogs, setRecentLogs] = useState<PainLog[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [toast, setToast] = useState("");
   const [toastType, setToastType] = useState<"success" | "error">("success");
-  const [editId, setEditId] = useState<string | null>(null);
+  const [recentLogs, setRecentLogs] = useState<PainLog[]>([]);
 
   const fetchLogs = async () => {
     const { data, error } = await supabase
@@ -30,176 +30,193 @@ export default function PainLogManagerSection({ memberId }: Props) {
       .order("date", { ascending: false })
       .limit(50);
 
-    if (error) {
-      console.error("❌ 통증 기록 불러오기 실패:", error);
-      return;
-    }
-
-    setRecentLogs(data ?? []);
+    if (!error && data) setRecentLogs(data);
+    else setRecentLogs([]);
   };
 
   useEffect(() => {
     if (memberId) fetchLogs();
   }, [memberId]);
 
+  const showToast = (msg: string, type: "success" | "error") => {
+    setToast(msg);
+    setToastType(type);
+    setTimeout(() => setToast(""), 2000);
+  };
+
   const handleSave = async () => {
-    const trimmedArea = area.trim();
-    if (!trimmedArea) {
-      showToast("❌ 통증 부위를 입력해주세요", "error");
+    if (!area.trim()) {
+      showToast("통증 부위를 입력해주세요", "error");
       return;
     }
+    setIsLoading(true);
 
     const payload = {
       member_id: memberId,
       date,
       pain_score: score,
-      pain_area: trimmedArea,
+      pain_area: area.trim(),
       source: "trainer",
     };
 
     const { error } = await supabase.from("pain_logs").insert(payload);
+    setIsLoading(false);
 
     if (error) {
-      console.error("❌ 저장 실패:", error);
-      showToast(`❌ 저장 실패: ${error.message}`, "error");
+      showToast(`저장 실패: ${error.message}`, "error");
     } else {
-      showToast("✅ 통증 기록 저장 완료", "success");
-      setEditId(null);
-      await fetchLogs();
-      setDate(new Date().toISOString().slice(0, 10));
-      setScore(0);
+      showToast("통증 기록이 저장되었습니다", "success");
       setArea("");
+      setScore(0);
+      setDate(new Date().toISOString().slice(0, 10));
+      fetchLogs();
     }
   };
 
   const handleDelete = async (id: string) => {
+    setIsLoading(true);
     const { error } = await supabase.from("pain_logs").delete().eq("id", id);
-
+    setIsLoading(false);
     if (error) {
-      showToast("❌ 삭제 실패", "error");
+      showToast("삭제 실패", "error");
     } else {
-      showToast("🗑️ 삭제 완료", "success");
-      await fetchLogs();
-      if (editId === id) {
-        setEditId(null);
-        setDate(new Date().toISOString().slice(0, 10));
-        setScore(0);
-        setArea("");
-      }
+      showToast("통증 기록이 삭제되었습니다", "error");
+      fetchLogs();
     }
   };
 
-  const showToast = (message: string, type: "success" | "error") => {
-    setToast(message);
-    setToastType(type);
-    setTimeout(() => setToast(""), 2500);
+  const getPainScoreColor = (score: number) => {
+    if (score <= 3) return "text-green-500";
+    if (score <= 6) return "text-yellow-500";
+    return "text-red-500";
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm p-5 space-y-6">
-      <h3 className="text-base font-bold text-gray-800">통증 점수 기록</h3>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label className="text-sm font-medium text-gray-700 mb-1">날짜</label>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm"
-          />
-        </div>
-
-        <div>
-          <label className="text-sm font-medium text-gray-700 mb-1">통증 점수 (0~10)</label>
-          <select
-            value={score}
-            onChange={(e) => setScore(Number(e.target.value))}
-            className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm"
-          >
-            {Array.from({ length: 11 }, (_, i) => (
-              <option key={i} value={i}>{i}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div>
-        <label className="text-sm font-medium text-gray-700 mb-1">통증 부위</label>
-        <input
-          type="text"
-          placeholder="예: 허리, 무릎"
-          value={area}
-          onChange={(e) => setArea(e.target.value)}
-          className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm"
-        />
-      </div>
-
-      <button
-        onClick={handleSave}
-        className="w-full bg-indigo-600 text-white py-3 rounded-xl text-base font-semibold hover:bg-indigo-700 transition"
-      >
-        {editId ? "수정하기" : "기록 저장"}
-      </button>
-
-      <div>
-        <h4 className="text-sm font-semibold mb-2">최근 통증 기록</h4>
-        <div className="space-y-2 text-sm max-h-64 overflow-y-auto">
-          {recentLogs.length === 0 && (
-            <div className="text-gray-400">기록이 없습니다.</div>
-          )}
-          {recentLogs.map((log) => (
-            <div key={log.id} className="flex justify-between items-center border-b pb-2">
-              <div>
-                <span>{log.date}</span>
-                {log.pain_area && (
-                  <span className="ml-2 text-gray-500">({log.pain_area})</span>
-                )}
-              </div>
-              <div className="flex items-center space-x-3">
-                <span
-                  className={
-                    log.pain_score >= 7
-                      ? "text-red-500"
-                      : log.pain_score >= 4
-                      ? "text-orange-500"
-                      : "text-green-500"
-                  }
-                >
-                  {log.pain_score}점
-                </span>
-                <button
-                  onClick={() => {
-                    setEditId(log.id);
-                    setDate(log.date);
-                    setScore(log.pain_score);
-                    setArea(log.pain_area ?? "");
-                  }}
-                  className="text-gray-400 hover:text-indigo-600"
-                >
-                  <i className="fas fa-edit"></i>
-                </button>
-                <button
-                  onClick={() => handleDelete(log.id)}
-                  className="text-gray-400 hover:text-red-500"
-                >
-                  <i className="fas fa-trash"></i>
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
+    <div className="bg-gray-50 min-h-screen pb-16">
+      {/* 피드백 알림 */}
       {toast && (
         <div
-          className={`text-sm text-center font-medium transition ${
-            toastType === "success" ? "text-green-600" : "text-red-500"
+          className={`fixed top-14 left-0 right-0 mx-auto w-11/12 p-3 rounded-lg shadow-lg z-50 transition-all duration-300 ${
+            toastType === "success"
+              ? "bg-green-100 text-green-800"
+              : "bg-red-100 text-red-800"
           }`}
         >
-          {toast}
+          <p className="text-center font-medium">{toast}</p>
         </div>
       )}
+
+      {/* 메인 카드 */}
+      <div className="pt-2 pb-50 px-4">
+        {/* 통증 기록 입력 카드 */}
+        <div className="bg-white rounded-xl shadow-md p-5 mt-4">
+          <h2 className="text-lg font-medium mb-4">새 통증 기록</h2>
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">날짜</label>
+              <div className="relative">
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                />
+                <i className="fas fa-calendar-alt absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">통증 점수</label>
+              <div className="relative">
+                <select
+                  value={score}
+                  onChange={(e) => setScore(Number(e.target.value))}
+                  className="w-full p-3 border border-gray-300 rounded-lg appearance-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm cursor-pointer"
+                >
+                  {[...Array(11)].map((_, i) => (
+                    <option key={i} value={i}>
+                      {i} {i <= 3 ? "(약함)" : i <= 6 ? "(중간)" : "(심함)"}
+                    </option>
+                  ))}
+                </select>
+                <i className="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+              </div>
+            </div>
+          </div>
+
+          <div className="mb-5">
+            <label className="block text-sm font-medium text-gray-700 mb-1">통증 부위</label>
+            <input
+              type="text"
+              value={area}
+              onChange={(e) => setArea(e.target.value)}
+              placeholder="예: 오른쪽 어깨, 허리 하단부"
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+            />
+          </div>
+
+          <button
+            onClick={handleSave}
+            disabled={isLoading}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition duration-200 cursor-pointer flex justify-center items-center"
+          >
+            {isLoading ? (
+              <span className="inline-block animate-spin mr-2">
+                <i className="fas fa-circle-notch"></i>
+              </span>
+            ) : (
+              <i className="fas fa-save mr-2"></i>
+            )}
+            {isLoading ? "저장 중..." : "통증 기록 저장하기"}
+          </button>
+        </div>
+
+        {/* 최근 기록 리스트 (5개만 표시, 스크롤) */}
+        <div className="mt-6">
+          <h2 className="text-lg font-medium mb-3">최근 통증 기록</h2>
+          {recentLogs.length === 0 ? (
+            <div className="bg-white rounded-xl shadow-md p-5 text-center text-gray-500">
+              <i className="fas fa-clipboard-list text-3xl mb-2"></i>
+              <p>아직 기록된 통증 내역이 없습니다</p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-100 overflow-y-auto">
+            {recentLogs.slice(0, 5).map((log) => (
+              <div
+                key={log.id}
+                className="bg-white rounded-xl shadow-sm p-4 flex items-center justify-between"
+              >
+                <div className="flex-1">
+                  <div className="flex items-center">
+                    <div className="text-gray-500 text-sm">
+                      <i className="far fa-calendar-alt mr-1"></i>
+                      {new Date(log.date).toLocaleDateString("ko-KR", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
+                    </div>
+                  </div>
+                  <div className="font-medium mt-1">{log.pain_area}</div>
+                </div>
+                <div className="flex items-center">
+                  <div className={`text-lg font-bold mr-4 ${getPainScoreColor(log.pain_score)}`}>
+                    {log.pain_score}
+                  </div>
+                  <button
+                    onClick={() => handleDelete(log.id)}
+                    className="text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
+                    aria-label="통증 기록 삭제"
+                  >
+                    <i className="fas fa-trash-alt"></i>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          )}
+        </div>
+      </div>
     </div>
   );
 }

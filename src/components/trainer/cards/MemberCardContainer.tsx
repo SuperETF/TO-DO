@@ -48,7 +48,7 @@ interface Member {
   lesson_used_count?: number;
 }
 
-export default function MemberCardContainer({ member }: { member: Member }) {
+export default function MemberCardContainer({ member, trainerId }: { member: Member; trainerId: string }) {
   // ---------- 1. 상태 선언 ----------
   const [sections, setSections] = useState(INITIAL_SECTIONS);
   const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
@@ -270,7 +270,7 @@ useEffect(() => {
 
   // ---------- 11. 렌더링 영역 ----------
   return (
-    <div className="bg-gray-50 min-h-screen py-6 px-4">
+    <div className="bg-gray-50  py-6 px-4">
       <div className="max-w-3xl mx-auto">
         
 {/* ---- [A] 상단 회원 정보 카드 ---- */}
@@ -608,9 +608,9 @@ useEffect(() => {
               </div>
               {/* 메뉴(섹션) 본문: 펼쳐진 경우만 렌더 */}
               {isOpen && item.enabled && (
-                <div className="px-4 pb-4 transition-all duration-300 ease-in-out">
-                  <Comp memberId={member.id} />
-                </div>
+          <div className="px-4 pb-4 transition-all duration-300 ease-in-out">
+            <Comp memberId={member.id} trainerId={trainerId} />
+          </div>
               )}
             </div>
           );

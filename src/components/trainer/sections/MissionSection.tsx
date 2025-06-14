@@ -84,48 +84,85 @@ export default function MissionSection({ memberId }: Props) {
   const allCompleted = missions.length > 0 && completedCount === missions.length;
 
   return (
-    <div className="space-y-4 border-t pt-4 mt-4">
-      <h3 className="font-semibold text-gray-700">이달의 미션</h3>
-
-      <ul className="space-y-2">
-        {missions.map((mission) => (
-          <li
-            key={mission.id}
-            className="flex items-center justify-between bg-gray-50 p-3 rounded-md"
-          >
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={!!isCompleted(mission.id)}
-                onChange={() => handleToggle(mission.id)}
-                disabled={loading}
-              />
-              <div>
-                <p className="font-medium">{mission.title}</p>
-                {mission.description && (
-                  <p className="text-sm text-gray-500">{mission.description}</p>
-                )}
-              </div>
-            </div>
-          </li>
-        ))}
-      </ul>
-
-      <div className="text-sm text-gray-600 text-center">
-        {completedCount}/{missions.length}개 완료됨
-      </div>
-
-      {allCompleted && (
-        <div className="bg-yellow-100 text-yellow-800 text-sm text-center font-semibold py-2 rounded-lg">
-          🎉 이달의 모든 미션을 완료했어요! 레벨업 + 마일리지 적립!
+    <section className="bg-white rounded-2xl w-full px-8 py-8 mb-6">
+      {/* 피드백 토스트 */}
+      {toast && (
+        <div
+          className="mb-3 px-3 py-2 rounded-lg flex items-center justify-center text-sm font-medium bg-green-100 text-green-700"
+        >
+          <i className="fas fa-check-circle mr-2" />
+          <span>{toast}</span>
         </div>
       )}
 
-      {toast && (
-        <p className="text-center text-sm text-green-600 transition-opacity duration-300">
-          {toast}
-        </p>
+      <div className="mb-6 flex items-center gap-2">
+        <i className="fas fa-flag-checkered text-blue-500" />
+        <h3 className="font-bold text-xl text-gray-800">이달의 미션</h3>
+      </div>
+
+      {missions.length === 0 ? (
+        <div className="text-center py-12 text-gray-400">
+          <i className="fas fa-tasks text-4xl mb-2" />
+          <p className="mt-2">이번 달 미션이 아직 등록되지 않았습니다.</p>
+        </div>
+      ) : (
+        <>
+          <ul className="space-y-3">
+            {missions.map((mission) => (
+              <li
+                key={mission.id}
+                className={`flex items-start bg-gray-50 rounded-xl p-4 transition ${
+                  isCompleted(mission.id)
+                    ? "border-2 border-blue-500 bg-blue-50"
+                    : "border border-gray-100"
+                }`}
+              >
+                <button
+                  className={`mt-1 w-7 h-7 rounded-full flex items-center justify-center border-2 mr-4 transition
+                    ${isCompleted(mission.id)
+                      ? "bg-blue-500 border-blue-500"
+                      : "bg-white border-gray-300"
+                    }`}
+                  disabled={loading}
+                  onClick={() => handleToggle(mission.id)}
+                  aria-label="미션 완료 토글"
+                >
+                  {isCompleted(mission.id) ? (
+                    <i className="fas fa-check text-white text-lg" />
+                  ) : (
+                    <i className="fas fa-circle text-gray-300 text-lg" />
+                  )}
+                </button>
+                <div className="flex-1">
+                  <p className={`font-semibold text-base ${
+                    isCompleted(mission.id) ? "text-blue-600" : "text-gray-800"
+                  }`}>
+                    {mission.title}
+                  </p>
+                  {mission.description && (
+                    <p className="text-sm text-gray-500 mt-0.5">{mission.description}</p>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          <div className="mt-6 text-center">
+            <div className="text-sm text-gray-700 font-medium mb-2">
+              <span className="font-bold text-blue-600">{completedCount}</span>
+              <span className="mx-1">/</span>
+              <span>{missions.length}</span>
+              <span className="ml-1">개 완료됨</span>
+            </div>
+            {allCompleted && (
+              <div className="bg-yellow-100 text-yellow-800 text-sm font-semibold py-2 px-4 rounded-lg mt-3 flex items-center justify-center">
+                <i className="fas fa-crown mr-2" />
+                🎉 이달의 모든 미션을 완료했어요! 레벨업 + 마일리지 적립!
+              </div>
+            )}
+          </div>
+        </>
       )}
-    </div>
+    </section>
   );
 }

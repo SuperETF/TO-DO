@@ -20,14 +20,14 @@ export default function BodyCompositionSection({
   const [formOpen, setFormOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState("");
-  const [toastType, setToastType] = useState<"success" | "error">("success");
+  const [, setToastType] = useState<"success" | "error">("success");
 
+  // BMI 제거
   const [form, setForm] = useState({
     date: new Date().toISOString().slice(0, 10),
     weight: "",
     bodyFat: "",
     muscle: "",
-    bmi: "",
   });
 
   const chartRef = useRef<HTMLDivElement>(null);
@@ -59,17 +59,23 @@ export default function BodyCompositionSection({
 
       chart.setOption({
         tooltip: { trigger: "axis" },
-        legend: { data: ["체중", "체지방률", "골격근량"] },
+        legend: { data: ["체중", "체지방률", "골격근량"], bottom: 0 },
+        grid: {
+          left: "3%",
+          right: "3%",
+          bottom: "14%",
+          top: "10%",
+          containLabel: true,
+        },
         xAxis: { type: "category", data: dates },
         yAxis: { type: "value" },
         series: [
-          { name: "체중", type: "line", data: weights },
-          { name: "체지방률", type: "line", data: fats },
-          { name: "골격근량", type: "line", data: muscles },
+          { name: "체중", type: "line", data: weights, symbol: "circle", symbolSize: 8 },
+          { name: "체지방률", type: "line", data: fats, symbol: "circle", symbolSize: 8 },
+          { name: "골격근량", type: "line", data: muscles, symbol: "circle", symbolSize: 8 },
         ],
       });
 
-      // 차트 인스턴스 dispose 처리
       return () => chart.dispose();
     }
   }, [compositions]);
@@ -90,7 +96,7 @@ export default function BodyCompositionSection({
       weight: Number(form.weight),
       body_fat_percent: Number(form.bodyFat),
       muscle_mass: Number(form.muscle),
-      bmi: form.bmi ? Number(form.bmi) : null,
+      bmi: null, // BMI 저장하지 않음
     };
 
     const { error } = await supabase
@@ -98,17 +104,16 @@ export default function BodyCompositionSection({
       .upsert([editId ? { ...payload, id: editId } : payload]);
 
     if (error) {
-      setToast("❌ 저장 실패: " + error.message);
+      setToast("저장 실패: " + error.message);
       setToastType("error");
     } else {
-      setToast(editId ? "✅ 체성분 정보 수정 완료" : "✅ 체성분 정보 저장 완료");
+      setToast(editId ? "수정 완료" : "저장 완료");
       setToastType("success");
       setForm({
         date: new Date().toISOString().slice(0, 10),
         weight: "",
         bodyFat: "",
         muscle: "",
-        bmi: "",
       });
       setEditId(null);
       setFormOpen(false);
@@ -127,7 +132,6 @@ export default function BodyCompositionSection({
       weight: c.weight?.toString() ?? "",
       bodyFat: c.body_fat_percent?.toString() ?? "",
       muscle: c.muscle_mass?.toString() ?? "",
-      bmi: c.bmi?.toString() ?? "",
     });
     setEditId(c.id);
     setFormOpen(true);
@@ -144,29 +148,64 @@ export default function BodyCompositionSection({
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm p-5 space-y-6">
-      <div className="flex justify-between items-center">
-        <h3 className="text-base font-bold text-gray-800">체성분 분석</h3>
+    <div className="bg-white rounded-2xl p-5 max-w-2xl w-full mx-auto space-y-7">
+      {/* 헤더 */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <i className="fas fa-dumbbell text-indigo-500 text-xl"></i>
+          <span className="text-lg font-bold text-gray-800">체성분 분석</span>
+        </div>
         <button
-          onClick={() => setFormOpen((v) => !v)}
-          className="bg-[#4C51BF] text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-indigo-700"
+          onClick={() => {
+            setFormOpen((v) => !v);
+            if (formOpen) setEditId(null);
+          }}
+          className="text-indigo-600 hover:text-indigo-800 font-semibold text-sm px-4 py-1 rounded-lg transition"
         >
-          {formOpen ? "닫기" : "+ 새 체성분 기록"}
+          {formOpen ? "작성 취소" : "+ 새 기록"}
         </button>
       </div>
 
+      {/* 기록 작성 폼 */}
       {formOpen && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Input label="측정일" type="date" value={form.date} onChange={(v) => setForm({ ...form, date: v })} />
-          <Input label="체중 (kg)" value={form.weight} onChange={(v) => setForm({ ...form, weight: v })} />
-          <Input label="체지방률 (%)" value={form.bodyFat} onChange={(v) => setForm({ ...form, bodyFat: v })} />
-          <Input label="골격근량 (kg)" value={form.muscle} onChange={(v) => setForm({ ...form, muscle: v })} />
-          <Input label="BMI" value={form.bmi} onChange={(v) => setForm({ ...form, bmi: v })} />
-          <div className="col-span-full">
+        <div className="w-full bg-indigo-50 rounded-xl p-5 flex flex-col gap-4 relative">
+          <div className="flex items-center mb-2 gap-2">
+            <i className="fas fa-pen text-indigo-500"></i>
+            <span className="text-indigo-900 text-base font-semibold">
+              새로운 체성분 기록 작성
+            </span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Input
+              label="측정일"
+              type="date"
+              value={form.date}
+              onChange={(v) => setForm({ ...form, date: v })}
+            />
+            <Input
+              label="체중 (kg)"
+              value={form.weight}
+              onChange={(v) => setForm({ ...form, weight: v })}
+              placeholder="예) 70.5"
+            />
+            <Input
+              label="체지방률 (%)"
+              value={form.bodyFat}
+              onChange={(v) => setForm({ ...form, bodyFat: v })}
+              placeholder="예) 20.2"
+            />
+            <Input
+              label="골격근량 (kg)"
+              value={form.muscle}
+              onChange={(v) => setForm({ ...form, muscle: v })}
+              placeholder="예) 30.1"
+            />
+          </div>
+          <div className="flex justify-end mt-2">
             <button
               onClick={handleSubmit}
               disabled={loading}
-              className="w-full bg-[#4C51BF] text-white py-3 rounded-xl text-base font-semibold hover:bg-indigo-700 transition disabled:opacity-50"
+              className="bg-indigo-600 text-white px-6 py-2 rounded-lg text-base font-semibold hover:bg-indigo-700 transition disabled:opacity-50"
             >
               {loading ? "저장 중..." : editId ? "수정하기" : "저장하기"}
             </button>
@@ -174,66 +213,92 @@ export default function BodyCompositionSection({
         </div>
       )}
 
+      {/* 차트 */}
       <div>
-        <h4 className="text-sm font-semibold mb-2">체성분 추이</h4>
-        <div ref={chartRef} className="w-full h-48" />
-      </div>
-
-      <div>
-        <h4 className="text-sm font-semibold mb-2">체성분 기록 목록</h4>
-        <div className="space-y-2">
-          {compositions.map((c) => (
-            <div key={c.id} className="flex justify-between items-center text-sm bg-gray-50 p-3 rounded-md">
-              <span>{c.date}</span>
-              <div className="flex items-center space-x-3">
-                <span>
-                  {c.weight}kg / {c.body_fat_percent}% / {c.muscle_mass}kg
-                </span>
-                <button onClick={() => handleEdit(c)} className="text-gray-400 hover:text-indigo-600" aria-label="수정">
-                  <i className="fas fa-edit"></i>
-                </button>
-                <button onClick={() => handleDelete(c.id)} className="text-gray-400 hover:text-red-500" aria-label="삭제">
-                  <i className="fas fa-trash"></i>
-                </button>
-              </div>
-            </div>
-          ))}
-          {compositions.length === 0 && (
-            <div className="text-gray-400 text-sm">체성분 기록이 없습니다.</div>
-          )}
+        <h4 className="text-sm font-semibold text-gray-700 mb-2">체성분 추이</h4>
+        <div
+          ref={chartRef}
+          className={`w-full h-48 ${compositions.length === 0 ? "flex items-center justify-center text-gray-400 text-base" : ""}`}
+        >
+          {compositions.length === 0 && "체성분 기록이 없습니다"}
         </div>
       </div>
 
+      {/* 기록 목록 */}
+      <div>
+        <h4 className="text-sm font-semibold text-gray-700 mb-2">체성분 기록 목록</h4>
+        <div>
+          {compositions.length === 0 && (
+            <div className="text-gray-400 py-5 text-center">아직 기록 없음</div>
+          )}
+          <div className="divide-y divide-gray-100">
+            {compositions.map((c) => (
+              <div
+                key={c.id}
+                className="flex items-center justify-between py-3 text-sm"
+              >
+                <span className="text-gray-700 font-medium">{c.date}</span>
+                <div className="flex gap-4 items-center">
+                  <span className="text-xl font-bold">{c.weight}kg</span>
+                  <span className="text-base text-indigo-700">{c.body_fat_percent}%</span>
+                  <span className="text-base text-blue-700">{c.muscle_mass}kg</span>
+                  <button
+                    onClick={() => handleEdit(c)}
+                    className="text-indigo-400 hover:text-indigo-600 transition"
+                  >
+                    <i className="fas fa-edit"></i>
+                  </button>
+                  <button
+                    onClick={() => handleDelete(c.id)}
+                    className="text-red-400 hover:text-red-600 transition"
+                  >
+                    <i className="fas fa-trash"></i>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* 토스트 메시지 */}
       {toast && (
-        <p className={`text-center text-sm font-medium transition ${
-          toastType === "success" ? "text-green-600" : "text-red-500"
-        }`}>
+        <div className={`
+          fixed left-1/2 -translate-x-1/2 bottom-8
+          bg-indigo-100 text-indigo-800 px-4 py-2 rounded-lg font-medium text-sm
+          transition
+        `}>
           {toast}
-        </p>
+        </div>
       )}
     </div>
   );
 }
 
+// 플랫 인풋
 function Input({
   label,
   value,
   onChange,
   type = "text",
+  placeholder,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   type?: string;
+  placeholder?: string;
 }) {
   return (
     <div className="flex flex-col">
-      <label className="text-sm font-medium text-gray-700 mb-1">{label}</label>
+      <label className="text-xs font-semibold text-gray-600 mb-1">{label}</label>
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="px-4 py-3 border border-gray-300 rounded-xl text-sm bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        placeholder={placeholder}
+        className="px-3 py-2 text-sm rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300 transition"
+        style={{ border: "none", boxShadow: "none" }} // 완전 플랫
       />
     </div>
   );

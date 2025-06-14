@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { supabase } from "../../../lib/supabaseClient";
+import { supabase } from "./src/lib/supabaseClient";
 
 interface CreateRecommendationModalProps {
   onClose: () => void;
@@ -87,20 +87,21 @@ export default function CreateRecommendationModal({
         {error && <p className="text-red-600 text-sm mb-3">{error}</p>}
 
         <div className="flex justify-end gap-2 mt-4">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300"
-          >
-            취소
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
-          >
-            {loading ? "등록 중..." : "등록"}
-          </button>
-        </div>
+  <button
+    onClick={onClose}
+    className="px-4 py-2 rounded text-[#A259F7] hover:text-[#8F43E9] font-semibold transition"
+  >
+    취소
+  </button>
+  <button
+    onClick={handleSubmit}
+    disabled={loading}
+    className="px-4 py-2 rounded bg-[#A259F7] hover:bg-[#8F43E9] text-white font-bold transition disabled:bg-purple-200 disabled:cursor-not-allowed"
+  >
+    {loading ? "등록 중..." : "등록"}
+  </button>
+</div>
+
       </div>
     </div>
   );

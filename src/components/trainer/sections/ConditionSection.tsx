@@ -15,7 +15,7 @@ export default function ConditionSection({ memberId, onSaved }: ConditionSection
   const [energy, setEnergy] = useState(6);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState("");
-  const [toastType, setToastType] = useState<"success" | "error">("success");
+  const [, setToastType] = useState<"success" | "error">("success");
 
   useEffect(() => {
     const fetchCondition = async () => {
@@ -54,12 +54,12 @@ export default function ConditionSection({ memberId, onSaved }: ConditionSection
     const { error } = await supabase.from("conditions").insert(payload);
 
     if (error) {
-      setToast("❌ 저장 실패: " + error.message);
+      setToast("저장 실패: " + error.message);
       setToastType("error");
     } else {
-      setToast("✅ 오늘의 컨디션 저장 완료");
+      setToast("오늘의 컨디션 저장 완료");
       setToastType("success");
-      if (onSaved) onSaved(); // 저장 성공 시 부모 콜백 호출
+      if (onSaved) onSaved();
     }
 
     setLoading(false);
@@ -67,53 +67,96 @@ export default function ConditionSection({ memberId, onSaved }: ConditionSection
   };
 
   return (
-    <div className="space-y-5">
-      <Slider label="수면" value={sleep} onChange={setSleep} />
-      <Slider label="통증" value={pain} onChange={setPain} />
-      <Slider label="에너지" value={energy} onChange={setEnergy} />
+    <div className="flex flex-col gap-7">
+      <ConditionSlider
+        label="수면"
+        value={sleep}
+        onChange={setSleep}
+        accent="indigo"
+      />
+      <ConditionSlider
+        label="통증"
+        value={pain}
+        onChange={setPain}
+        accent="red"
+      />
+      <ConditionSlider
+        label="에너지"
+        value={energy}
+        onChange={setEnergy}
+        accent="blue"
+      />
 
       <button
         onClick={handleSubmit}
         disabled={loading}
-        className="w-full bg-indigo-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition disabled:opacity-50"
+        className="w-full bg-indigo-600 text-white py-2 rounded-lg text-base font-semibold hover:bg-indigo-700 transition disabled:opacity-50 mt-1"
       >
         {loading ? "저장 중..." : "저장하기"}
       </button>
 
       {toast && (
-        <p
-          className={`text-center text-sm font-medium transition ${
-            toastType === "success" ? "text-green-600" : "text-red-500"
-          }`}
+        <div
+          className={`
+            fixed left-1/2 -translate-x-1/2 bottom-8
+            bg-indigo-100 text-indigo-800 px-4 py-2 rounded-lg font-medium text-sm
+            transition z-30
+          `}
         >
           {toast}
-        </p>
+        </div>
       )}
     </div>
   );
 }
 
-function Slider({
+function ConditionSlider({
   label,
   value,
   onChange,
+  accent = "indigo",
 }: {
   label: string;
   value: number;
   onChange: (val: number) => void;
+  accent?: "indigo" | "red" | "blue";
 }) {
+  const accentMap: Record<string, string> = {
+    indigo: "focus:ring-indigo-500",
+    red: "focus:ring-red-400",
+    blue: "focus:ring-blue-400",
+  };
+  const accentLabel: Record<string, string> = {
+    indigo: "text-indigo-600",
+    red: "text-red-500",
+    blue: "text-blue-500",
+  };
+
   return (
-    <div className="space-y-2">
-      <label className="block text-sm font-medium text-gray-700">
-        {label}: {value} / 10
-      </label>
+    <div className="flex flex-col gap-2">
+      <div className="flex justify-between items-center">
+        <span className={`text-xs font-semibold text-gray-500`}>
+          {label}
+        </span>
+        <span className={`text-xl font-bold ${accentLabel[accent]}`}>
+          {value} / 10
+        </span>
+      </div>
       <input
         type="range"
         min={0}
         max={10}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+        className={`w-full h-2 rounded-lg appearance-none cursor-pointer bg-gray-200 ${accentMap[accent]}`}
+        style={{
+          accentColor:
+            accent === "indigo"
+              ? "#6366f1"
+              : accent === "red"
+              ? "#ef4444"
+              : "#3b82f6",
+        }}
       />
     </div>
   );
