@@ -10,12 +10,35 @@ export default function LoginPage() {
   const [name, setName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [autoLogin, setAutoLogin] = useState(false);
   const navigate = useNavigate();
 
+  // ✅ DB에 저장된 auto_login 값 확인해서 자동 로그인 처리
   useEffect(() => {
-    const storedRole = localStorage.getItem("role");
-    if (storedRole === "trainer") navigate("/trainer-dashboard");
-    else if (storedRole === "member") navigate("/member-dashboard");
+    const checkAutoLogin = async () => {
+      const memberId = localStorage.getItem("member_id");
+      if (!memberId) return;
+
+      const { data, error } = await supabase
+        .from("members")
+        .select("auto_login")
+        .eq("id", memberId)
+        .single();
+
+      if (error || !data?.auto_login) return;
+
+      navigate("/member-dashboard");
+    };
+
+    const role = localStorage.getItem("role");
+
+    if (role === "trainer") {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) navigate("/trainer-dashboard");
+      });
+    } else if (role === "member") {
+      checkAutoLogin();
+    }
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -27,28 +50,41 @@ export default function LoginPage() {
         email,
         password,
       });
+
       if (error || !data.user) {
         alert("로그인 실패: 이메일 또는 비밀번호를 확인해주세요.");
         setIsLoading(false);
         return;
       }
-      localStorage.setItem("role", "trainer");
+
       localStorage.setItem("trainer_id", data.user.id);
+      localStorage.setItem("role", "trainer");
+
       navigate("/trainer-dashboard");
     } else {
       const { data, error } = await supabase
         .from("members")
-        .select("id, name, phone_last4")
+        .select("id, auto_login")
         .eq("name", name.trim())
         .eq("phone_last4", phoneLast4.trim())
         .single();
+
       if (error || !data) {
         alert("회원 정보를 찾을 수 없습니다. 이름과 전화번호를 확인해주세요.");
         setIsLoading(false);
         return;
       }
-      localStorage.setItem("role", "member");
+
+      // ✅ member_id 저장 (기기 자동 로그인 시 사용)
       localStorage.setItem("member_id", data.id);
+      localStorage.setItem("role", "member");
+
+      // ✅ auto_login 상태 DB에 반영
+      await supabase
+        .from("members")
+        .update({ auto_login: autoLogin })
+        .eq("id", data.id);
+
       navigate("/member-dashboard");
     }
 
@@ -86,7 +122,7 @@ export default function LoginPage() {
           </button>
         </div>
 
-        <form onSubmit={handleLogin} className="bg-white  rounded-2xl space-y-6">
+        <form onSubmit={handleLogin} className="bg-white rounded-2xl space-y-6">
           <h2 className="text-2xl font-bold text-gray-800 text-center">
             {role === "trainer" ? "전문가 로그인" : "회원 로그인"}
           </h2>
@@ -94,9 +130,7 @@ export default function LoginPage() {
           {role === "trainer" ? (
             <>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  이메일
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">이메일</label>
                 <input
                   type="email"
                   value={email}
@@ -107,9 +141,7 @@ export default function LoginPage() {
                 />
               </div>
               <div className="relative">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  비밀번호
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">비밀번호</label>
                 <input
                   type={showPassword ? "text" : "password"}
                   value={password}
@@ -130,9 +162,7 @@ export default function LoginPage() {
           ) : (
             <>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  이름
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">이름</label>
                 <input
                   type="text"
                   value={name}
@@ -157,6 +187,19 @@ export default function LoginPage() {
               </div>
             </>
           )}
+
+          <div className="flex items-center space-x-2">
+            <input
+              id="autoLogin"
+              type="checkbox"
+              checked={autoLogin}
+              onChange={(e) => setAutoLogin(e.target.checked)}
+              className="w-4 h-4 text-[#4CD6B4] border-gray-300 rounded focus:ring-[#4CD6B4]"
+            />
+            <label htmlFor="autoLogin" className="text-sm text-gray-600">
+              자동 로그인
+            </label>
+          </div>
 
           <button
             type="submit"
